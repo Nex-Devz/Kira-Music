@@ -28,7 +28,7 @@ class CommandContext {
   async deferReply(options = {}) {
     if (this.isInteraction) {
       if (!this.source.deferred && !this.source.replied) {
-        await this.source.deferReply({ ephemeral: Boolean(options.ephemeral) });
+        await this.source.deferReply(options.ephemeral ? { flags: 64 } : {});
         this.deferred = true;
       }
     } else {

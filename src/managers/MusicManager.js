@@ -164,7 +164,10 @@ class MusicManager {
     const cached = cacheManager.getTrackInfo(query);
     if (cached) return cached;
 
-    const result = await this.kumo.search(query, requester);
+    const result = await this.kumo.search({
+      query,
+      requester
+    });
     if (result && result.tracks && result.tracks.length > 0) {
       cacheManager.setTrackInfo(query, result);
     }
