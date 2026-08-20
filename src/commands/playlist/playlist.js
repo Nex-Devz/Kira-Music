@@ -26,27 +26,27 @@ module.exports = {
       sub
         .setName('delete')
         .setDescription('Delete a playlist')
-        .addStringOption(opt => opt.setName('name').setDescription('Playlist name to delete').setRequired(true))
+        .addStringOption(opt => opt.setName('name').setDescription('Playlist name to delete').setRequired(true).setAutocomplete(true))
     )
     .addSubcommand(sub =>
       sub
         .setName('add')
         .setDescription('Add a song to a playlist')
-        .addStringOption(opt => opt.setName('name').setDescription('Playlist name').setRequired(true))
+        .addStringOption(opt => opt.setName('name').setDescription('Playlist name').setRequired(true).setAutocomplete(true))
         .addStringOption(opt => opt.setName('query').setDescription('Song title or URL').setRequired(true))
     )
     .addSubcommand(sub =>
       sub
         .setName('remove')
         .setDescription('Remove a song from a playlist by position')
-        .addStringOption(opt => opt.setName('name').setDescription('Playlist name').setRequired(true))
+        .addStringOption(opt => opt.setName('name').setDescription('Playlist name').setRequired(true).setAutocomplete(true))
         .addIntegerOption(opt => opt.setName('position').setDescription('Track position number').setRequired(true).setMinValue(1))
     )
     .addSubcommand(sub =>
       sub
         .setName('play')
         .setDescription('Play an entire playlist')
-        .addStringOption(opt => opt.setName('name').setDescription('Playlist name to play').setRequired(true))
+        .addStringOption(opt => opt.setName('name').setDescription('Playlist name to play').setRequired(true).setAutocomplete(true))
     )
     .addSubcommand(sub =>
       sub
@@ -57,7 +57,7 @@ module.exports = {
       sub
         .setName('view')
         .setDescription('View tracks in a playlist')
-        .addStringOption(opt => opt.setName('name').setDescription('Playlist name').setRequired(true))
+        .addStringOption(opt => opt.setName('name').setDescription('Playlist name').setRequired(true).setAutocomplete(true))
     )
     .addSubcommand(sub =>
       sub

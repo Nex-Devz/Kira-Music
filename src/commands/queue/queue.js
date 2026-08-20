@@ -53,7 +53,7 @@ module.exports = {
       sub
         .setName('jump')
         .setDescription('Jump directly to a song in the queue')
-        .addIntegerOption(opt => opt.setName('position').setDescription('Track position to skip to').setRequired(true).setMinValue(1))
+        .addIntegerOption(opt => opt.setName('position').setDescription('Track position to skip to').setRequired(true).setMinValue(1).setAutocomplete(true))
     ),
 
   async execute(context) {

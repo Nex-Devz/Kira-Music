@@ -20,6 +20,7 @@ module.exports = {
         .setName('query')
         .setDescription('Song title or artist to search')
         .setRequired(true)
+        .setAutocomplete(true)
     ),
 
   async execute(context) {

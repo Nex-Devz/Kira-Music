@@ -19,6 +19,7 @@ module.exports = {
         .setName('query')
         .setDescription('Song title, artist name, or direct URL')
         .setRequired(true)
+        .setAutocomplete(true)
     ),
 
   async execute(context) {

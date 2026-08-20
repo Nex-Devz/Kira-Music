@@ -20,15 +20,7 @@ module.exports = {
       option
         .setName('preset')
         .setDescription('Filter preset to apply')
-        .addChoices(
-          { name: 'Reset / None', value: 'none' },
-          { name: 'Bass Boost', value: 'bassboost' },
-          { name: 'Nightcore', value: 'nightcore' },
-          { name: 'Vaporwave', value: 'vaporwave' },
-          { name: '8D Audio', value: '8d' },
-          { name: 'Karaoke', value: 'karaoke' },
-          { name: 'Timescale', value: 'timescale' }
-        )
+        .setAutocomplete(true)
     ),
 
   async execute(context) {
@@ -36,7 +28,7 @@ module.exports = {
     const player = musicManager.getPlayer(context.guildId);
 
     if (!preset) {
-      // Return interactive more controls / filter panel
+      // Return interactive audio controls / filter panel
       return context.reply(uiTemplates.buildMoreControlsView(player));
     }
 
