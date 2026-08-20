@@ -41,17 +41,23 @@ class MusicManager {
     if (!this.kumo) return;
 
     // YuKumo Node Events
-    this.kumo.nodes.on('connect', (node) => {
-      console.log(`[YuKumo] Lavalink Node "${node.name}" connected successfully.`);
-    });
+    for (const node of this.kumo.nodes.values()) {
+      node.ws.eventDispatcher.on('nodeReady', () => {
+        console.log(`[YuKumo] Lavalink Node "${node.name}" connected and ready.`);
+      });
 
-    this.kumo.nodes.on('disconnect', (node, reason) => {
-      console.warn(`[YuKumo] Lavalink Node "${node.name}" disconnected. Reason:`, reason);
-    });
+      node.ws.eventDispatcher.on('nodeReconnected', () => {
+        console.log(`[YuKumo] Lavalink Node "${node.name}" reconnected.`);
+      });
 
-    this.kumo.nodes.on('error', (node, error) => {
-      console.error(`[YuKumo] Lavalink Node "${node.name}" error:`, error?.message || error);
-    });
+      node.ws.eventDispatcher.on('nodeDisconnect', (_nodeId, reason) => {
+        console.warn(`[YuKumo] Lavalink Node "${node.name}" disconnected. Reason:`, reason);
+      });
+
+      node.ws.eventDispatcher.on('nodeError', (_nodeId, error) => {
+        console.error(`[YuKumo] Lavalink Node "${node.name}" error:`, error?.message || error);
+      });
+    }
 
     // Track Start Event
     this.kumo.events.on(EVENT_TYPES.TRACK_START, async (event) => {

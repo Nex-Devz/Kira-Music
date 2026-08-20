@@ -1,9 +1,9 @@
-const { ActivityType } = require('discord.js');
+const { ActivityType, Events } = require('discord.js');
 const commandHandler = require('../handlers/CommandHandler');
 const musicManager = require('../managers/MusicManager');
 
 module.exports = {
-  name: 'ready',
+  name: Events.ClientReady || 'clientReady',
   once: true,
   async execute(client) {
     console.log(`[Kira] Bot logged in as ${client.user.tag} (ID: ${client.user.id})`);
