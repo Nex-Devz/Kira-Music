@@ -131,9 +131,6 @@ DEFAULT_PREFIX=!
 
 ### 4. Running the Application
 ```bash
-# Run integrity & test suite
-npm test
-
 # Start in production mode
 npm start
 
@@ -265,22 +262,6 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed production deployment 
 - [Discord Components V2 Guide](docs/COMPONENTS_V2.md) — Deep dive into the Components V2 UI system.
 - [Premium System Guide](docs/PREMIUM.md) — Premium tier management and entitlement logic.
 - [Production Deployment Guide](docs/DEPLOYMENT.md) — Production setup with PM2, Docker, and Lavalink.
-
----
-
-## 🧪 Testing & Quality Assurance
-
-Run the built-in automated test suite:
-```bash
-npm test
-```
-
-The test runner validates:
-1. SQLite schema and repository CRUD operations.
-2. Discord Components V2 structural compliance (`type: 17`, `type: 9`, `type: 10`, `type: 14`, `flags: 32768`).
-3. Skia Canvas rendering pipelines for player and profile cards.
-4. Command registry validity and Slash command builder completeness.
-5. Premium entitlement evaluations and feature gating.
 
 ---
 
