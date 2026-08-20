@@ -20,11 +20,6 @@ Thank you for your interest in contributing to Kira! We welcome contributions to
 3. **Configure Environment:**
    Copy `.env.example` to `.env` and set up your test bot token and local Lavalink v4 node credentials.
 
-4. **Run Verification Tests:**
-   ```bash
-   npm test
-   ```
-
 ---
 
 ## 📐 Coding Guidelines
@@ -41,5 +36,4 @@ Thank you for your interest in contributing to Kira! We welcome contributions to
 
 1. Create a feature branch: `git checkout -b feature/my-cool-feature`
 2. Commit your changes with descriptive commit messages.
-3. Run `npm test` to ensure all tests pass.
-4. Open a Pull Request on GitHub against the `main` branch.
+3. Open a Pull Request on GitHub against the `main` branch.
