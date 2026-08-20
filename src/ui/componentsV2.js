@@ -236,7 +236,7 @@ class ActionRowBuilder {
 }
 
 class ContainerBuilder {
-  constructor(accentColor = COLORS.PRIMARY) {
+  constructor(accentColor = null) {
     this.type = COMPONENT_TYPES.CONTAINER;
     this.accent_color = accentColor;
     this.spoiler = false;
@@ -244,7 +244,11 @@ class ContainerBuilder {
   }
 
   setAccentColor(color) {
-    this.accent_color = typeof color === 'string' ? parseInt(color.replace('#', ''), 16) : color;
+    if (color === null || color === undefined) {
+      this.accent_color = null;
+    } else {
+      this.accent_color = typeof color === 'string' ? parseInt(color.replace('#', ''), 16) : color;
+    }
     return this;
   }
 

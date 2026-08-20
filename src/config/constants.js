@@ -1,18 +1,18 @@
 /**
  * Application Constants and UI Visual Tokens
- * Minimal, dark, professional, no unnecessary emojis.
+ * Minimal, dark, professional, stealth aesthetic with no unnecessary emojis.
  */
 
 module.exports = {
   COLORS: {
-    PRIMARY: 0x5865f2,
-    SUCCESS: 0x2ecc71,
-    WARNING: 0xf1c40f,
-    DANGER: 0xe74c3c,
-    NEUTRAL: 0x2b2d31,
-    DARK_BG: 0x111214,
-    CONTAINER: 0x1e1f22,
-    ACCENT: 0x7289da,
+    PRIMARY: null,       // Removed accent color for pure stealth dark container UI
+    SUCCESS: null,       // Neutralized container color
+    WARNING: null,
+    DANGER: null,
+    NEUTRAL: null,
+    DARK_BG: 0x0a0b0e,
+    CONTAINER: 0x14151a,
+    ACCENT: 0x5865f2,
     PREMIUM: 0xf59e0b,
     MUTED: 0x949ba4
   },

@@ -1,6 +1,5 @@
 const {
   ContainerBuilder,
-  SectionBuilder,
   TextDisplayBuilder,
   SeparatorBuilder,
   ActionRowBuilder,
@@ -8,7 +7,7 @@ const {
   StringSelectBuilder,
   createV2Payload
 } = require('./componentsV2');
-const { COLORS, BUTTON_STYLES } = require('../config/constants');
+const { BUTTON_STYLES } = require('../config/constants');
 const playerCanvas = require('../canvas/PlayerCanvas');
 const profileCanvas = require('../canvas/ProfileCanvas');
 
@@ -58,10 +57,10 @@ class UITemplates {
     const queueSize = player.queue?.tracksList?.length || player.queue?.size || 0;
     const volume = player.volume || 80;
 
-    const container = new ContainerBuilder(COLORS.PRIMARY)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(
-          `**${title}**\n${author} • Volume: **${volume}%** • Queue: **${queueSize} tracks**`
+          `**${title}**\n${author} • Volume: \`${volume}%\` • Queue: \`${queueSize} tracks\``
         ),
         new SeparatorBuilder(true, 1),
         new ActionRowBuilder().addComponents(
@@ -97,7 +96,7 @@ class UITemplates {
             .setStyle(BUTTON_STYLES.SECONDARY),
           new ButtonBuilder()
             .setCustomId('player:more')
-            .setLabel('More Controls')
+            .setLabel('Audio Controls')
             .setStyle(BUTTON_STYLES.SECONDARY)
         )
       );
@@ -109,16 +108,16 @@ class UITemplates {
   }
 
   buildEmptyPlayerView() {
-    const container = new ContainerBuilder(COLORS.NEUTRAL)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(
-          `### Music Player Idle\nNo tracks currently in playback. Use \`/play <query>\` to start playing music.`
+          `### Player Idle\nNo tracks currently in playback queue. Use \`/play <query>\` to start streaming.`
         ),
         new SeparatorBuilder(true, 1),
         new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId('player:help')
-            .setLabel('Commands')
+            .setLabel('Command Browser')
             .setStyle(BUTTON_STYLES.SECONDARY),
           new ButtonBuilder()
             .setCustomId('player:favorites')
@@ -134,7 +133,7 @@ class UITemplates {
     const loop = player.loop || player.queue?.repeatMode || 'off';
     const autoplay = Boolean(player.autoplay || player.isAutoplayEnabled?.());
 
-    const container = new ContainerBuilder(COLORS.PRIMARY)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(`### Playback Controls & Audio Tuning`),
         new SeparatorBuilder(true, 1),
@@ -178,12 +177,13 @@ class UITemplates {
           new StringSelectBuilder()
             .setCustomId('filter:select')
             .setPlaceholder('Select an Audio Filter Preset')
-            .addOption('Default / Clear Filters', 'none', 'Reset audio filters to flat')
+            .addOption('Default / Flat EQ', 'none', 'Reset audio filters to default')
             .addOption('Bass Boost', 'bassboost', 'Enhance low frequencies')
             .addOption('Nightcore', 'nightcore', 'Speed up and pitch up audio')
             .addOption('Vaporwave', 'vaporwave', 'Slow down and deepen audio')
-            .addOption('8D Audio', '8d', 'Rotating spatial audio effect')
+            .addOption('8D Spatial Audio', '8d', 'Rotating 360-degree spatial effect')
             .addOption('Karaoke', 'karaoke', 'Attenuate vocal frequencies')
+            .addOption('Timescale', 'timescale', 'Fine tempo and pitch tuning')
         ),
         new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -229,10 +229,10 @@ class UITemplates {
       }).join('\n');
     }
 
-    const container = new ContainerBuilder(COLORS.PRIMARY)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(
-          `### Server Queue (Page ${currentPage}/${totalPages})\nTotal: **${totalTracks} tracks** • Total Duration: **${this.formatDuration(totalDurationMs)}**\n\n${currentSection}`
+          `### Server Playback Queue (Page ${currentPage}/${totalPages})\nTotal: **${totalTracks} tracks** • Duration: **${this.formatDuration(totalDurationMs)}**\n\n${currentSection}`
         ),
         new SeparatorBuilder(true, 1),
         new TextDisplayBuilder(queueSection),
@@ -292,7 +292,7 @@ class UITemplates {
       select.addOption(`${i + 1}. ${title}`, String(i), `${author} • ${dur}`);
     });
 
-    const container = new ContainerBuilder(COLORS.PRIMARY)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(
           `### Search Results\nQuery: **"${query}"**\nSelect a track below to add it to playback.`
@@ -320,7 +320,7 @@ class UITemplates {
     const start = (currentPage - 1) * linesPerPage;
     const pageLines = lines.slice(start, start + linesPerPage).join('\n');
 
-    const container = new ContainerBuilder(COLORS.PRIMARY)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(
           `### Lyrics: ${title}\n**Artist:** ${author} • Page **${currentPage}/${totalPages}**`
@@ -351,9 +351,9 @@ class UITemplates {
 
   // --- PLAYLIST VIEW ---
   buildPlaylistListView(playlists) {
-    const container = new ContainerBuilder(COLORS.PRIMARY)
+    const container = new ContainerBuilder(null)
       .addComponents(
-        new TextDisplayBuilder(`### Your Playlists\nManage and play your custom collections.`),
+        new TextDisplayBuilder(`### Saved Playlists\nManage and play your custom collections.`),
         new SeparatorBuilder(true, 1)
       );
 
@@ -396,7 +396,7 @@ class UITemplates {
       ? tracks.slice(0, 15).map((t, i) => `\`${i + 1}.\` **${t.title}** - ${t.author} \`[${this.formatDuration(t.duration)}]\``).join('\n')
       : 'This playlist has no tracks yet.';
 
-    const container = new ContainerBuilder(COLORS.PRIMARY)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(
           `### Playlist: ${playlist.name}\n${playlist.description || 'No description'} • **${tracks.length} tracks**`
@@ -427,7 +427,7 @@ class UITemplates {
   // --- SETTINGS DASHBOARD ---
   buildSettingsDashboard(guildData) {
     const prefix = guildData.prefix || '!';
-    const djRole = guildData.dj_role_id ? `<@&${guildData.dj_role_id}>` : 'Disabled (All Users)';
+    const djRole = guildData.dj_role_id ? `<@&${guildData.dj_role_id}>` : 'Disabled (Open Access)';
     const musicChannel = guildData.music_channel_id ? `<#${guildData.music_channel_id}>` : 'All Channels';
     const playerChannel = guildData.player_channel_id ? `<#${guildData.player_channel_id}>` : 'Dynamic';
     const defaultVol = guildData.default_volume || 80;
@@ -457,7 +457,7 @@ class UITemplates {
       .addOption('Autoplay', 'autoplay', 'Toggle automatic related tracks')
       .addOption('Reset Defaults', 'reset', 'Reset all guild settings to default');
 
-    const container = new ContainerBuilder(COLORS.PRIMARY)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(
           `### Server Settings Dashboard\nConfigure server playback, permissions, and channel rules.\n\n${info}`
@@ -471,12 +471,12 @@ class UITemplates {
 
   // --- SETUP WIZARD ---
   buildSetupWizard(step = 1, data = {}) {
-    const container = new ContainerBuilder(COLORS.PRIMARY);
+    const container = new ContainerBuilder(null);
 
     if (step === 1) {
       container.addComponents(
         new TextDisplayBuilder(
-          `### Interactive Server Setup: Step 1 of 3\nConfigure a dedicated music channel where commands are accepted, or keep it available server-wide.`
+          `### Interactive Setup: Step 1 of 3\nConfigure a dedicated music command channel or permit bot commands server-wide.`
         ),
         new SeparatorBuilder(true, 1),
         new ActionRowBuilder().addComponents(
@@ -493,13 +493,13 @@ class UITemplates {
     } else if (step === 2) {
       container.addComponents(
         new TextDisplayBuilder(
-          `### Interactive Server Setup: Step 2 of 3\nConfigure DJ Role permissions. If disabled, everyone in the voice channel can control playback.`
+          `### Interactive Setup: Step 2 of 3\nConfigure DJ Role permissions. If disabled, all voice members can control playback.`
         ),
         new SeparatorBuilder(true, 1),
         new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId('setup:dj:none')
-            .setLabel('No DJ Role (Open Access)')
+            .setLabel('Open Access (No DJ Role)')
             .setStyle(BUTTON_STYLES.SECONDARY),
           new ButtonBuilder()
             .setCustomId('setup:dj:create')
@@ -510,7 +510,7 @@ class UITemplates {
     } else if (step === 3) {
       container.addComponents(
         new TextDisplayBuilder(
-          `### Setup Completed\nServer configuration is now optimized. You can use \`/play\` or adjust settings at any time with \`/settings\`.`
+          `### Setup Completed\nServer configuration is initialized. Use \`/play\` or adjust settings at any time with \`/settings\`.`
         ),
         new SeparatorBuilder(true, 1),
         new ActionRowBuilder().addComponents(
@@ -546,7 +546,7 @@ class UITemplates {
       statusText += ` (Server Plan Expires: ${expDate})`;
     }
 
-    const container = new ContainerBuilder(COLORS.PREMIUM)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(
           `### Premium Tier Dashboard\n${statusText}\n\n**Feature Entitlements:**\n${perks}`
@@ -680,7 +680,7 @@ class UITemplates {
       select.addOption('Developer Commands', 'dev', 'Owner maintenance and node tools');
     }
 
-    const container = new ContainerBuilder(COLORS.PRIMARY)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(`### ${currentCat.title}\n\n${currentCat.commands.join('\n')}`),
         new SeparatorBuilder(true, 1),
@@ -693,10 +693,10 @@ class UITemplates {
   // --- PROFILE VIEW ---
   async buildProfileView(userData, userObj) {
     const buffer = await profileCanvas.render(userData, userObj);
-    const container = new ContainerBuilder(COLORS.PRIMARY)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(
-          `### ${userObj?.username || 'User'}'s Music Profile\nTotal Tracks: **${userData.totalPlayed || 0}** • Time: **${this.formatDuration(userData.totalDurationMs || 0)}**`
+          `### ${userObj?.username || 'User'}'s Music Profile\nTotal Tracks: **${userData.totalPlayed || 0}** • Listening Time: **${this.formatDuration(userData.totalDurationMs || 0)}**`
         )
       );
 
@@ -707,7 +707,7 @@ class UITemplates {
 
   // --- STATS VIEW ---
   buildStatsView(statsData) {
-    const container = new ContainerBuilder(COLORS.PRIMARY)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(
           `### Server Music Statistics\n• Total Users: **${statsData.totalUsers || 0}**\n• Total Tracks Streamed: **${statsData.totalTracks || 0}**\n• Total Listening Time: **${this.formatDuration(statsData.totalPlayTimeMs || 0)}**`
@@ -721,7 +721,7 @@ class UITemplates {
       ).join('\n');
 
       container.addComponents(
-        new TextDisplayBuilder(`**Most Active Listeners:**\n${topList}`)
+        new TextDisplayBuilder(`**Top Active Listeners:**\n${topList}`)
       );
     }
 
@@ -730,25 +730,25 @@ class UITemplates {
 
   // --- GENERIC MESSAGE TEMPLATES ---
   buildSuccessMessage(text) {
-    const container = new ContainerBuilder(COLORS.SUCCESS)
+    const container = new ContainerBuilder(null)
       .addComponents(new TextDisplayBuilder(`### Success\n${text}`));
     return createV2Payload(container);
   }
 
   buildErrorMessage(text) {
-    const container = new ContainerBuilder(COLORS.DANGER)
+    const container = new ContainerBuilder(null)
       .addComponents(new TextDisplayBuilder(`### Error\n${text}`));
     return createV2Payload(container, { ephemeral: true });
   }
 
   buildLoadingMessage(text = 'Processing request...') {
-    const container = new ContainerBuilder(COLORS.NEUTRAL)
+    const container = new ContainerBuilder(null)
       .addComponents(new TextDisplayBuilder(text));
     return createV2Payload(container);
   }
 
   buildConfirmMessage(text, confirmCustomId, cancelCustomId = 'generic:cancel') {
-    const container = new ContainerBuilder(COLORS.WARNING)
+    const container = new ContainerBuilder(null)
       .addComponents(
         new TextDisplayBuilder(`### Confirmation\n${text}`),
         new SeparatorBuilder(true, 1),
