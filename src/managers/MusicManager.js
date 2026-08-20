@@ -156,7 +156,50 @@ class MusicManager {
   }
 
   /**
-   * Search for tracks using YuKumo
+   * Format raw Lavalink track load result into consistent schema
+   */
+  formatLoadResult(raw, requester) {
+    if (!raw) return { loadType: 'empty', tracks: [] };
+    const loadType = raw.loadType || 'empty';
+
+    let rawTracks = [];
+    if (loadType === 'track' && raw.data) {
+      rawTracks = [raw.data];
+    } else if (loadType === 'playlist' && raw.data) {
+      rawTracks = raw.data.tracks || [];
+    } else if (loadType === 'search' && Array.isArray(raw.data)) {
+      rawTracks = raw.data;
+    } else if (Array.isArray(raw.tracks)) {
+      rawTracks = raw.tracks;
+    }
+
+    const tracks = rawTracks.map(t => {
+      const track = { ...t };
+      if (t.info) {
+        track.title = t.title || t.info.title;
+        track.author = t.author || t.info.author;
+        track.duration = t.duration || t.info.duration || t.info.length;
+        track.length = track.duration;
+        track.uri = t.uri || t.info.uri;
+        track.artworkUrl = t.artworkUrl || t.info.artworkUrl;
+      }
+      if (requester) {
+        track.requester = requester;
+      }
+      return track;
+    });
+
+    return {
+      loadType,
+      type: loadType.toUpperCase(),
+      tracks,
+      playlistInfo: raw.data?.info || raw.playlistInfo || null,
+      exception: raw.exception || null
+    };
+  }
+
+  /**
+   * Search for tracks using YuKumo with intelligent multi-engine fallback
    */
   async search(query, requester = null) {
     if (!this.kumo) throw new Error('Music engine is not ready.');
@@ -164,13 +207,50 @@ class MusicManager {
     const cached = cacheManager.getTrackInfo(query);
     if (cached) return cached;
 
-    const result = await this.kumo.search({
-      query,
-      requester
-    });
-    if (result && result.tracks && result.tracks.length > 0) {
-      cacheManager.setTrackInfo(query, result);
+    // Pick connected node, or fallback to any configured node
+    const node = this.kumo.nodes.pick(query) || this.kumo.nodes.getAll()[0];
+    if (!node) {
+      return { loadType: 'empty', tracks: [] };
     }
+
+    const isUrl = /^https?:\/\//i.test(query);
+    const hasPrefix = /^[a-zA-Z0-9]+:/.test(query);
+
+    let result = null;
+
+    if (isUrl || hasPrefix) {
+      try {
+        const raw = await node.rest.loadTracks(query);
+        result = this.formatLoadResult(raw, requester);
+      } catch (err) {
+        console.error('[MusicManager:search] Direct load error:', err?.message || err);
+      }
+    } else {
+      // Smart Multi-Engine search cascade
+      const defaultEngine = process.env.SEARCH_ENGINE || 'ytsearch';
+      const searchEngines = [defaultEngine, 'spsearch', 'ytmsearch', 'scsearch', 'ytsearch'];
+      const uniqueEngines = [...new Set(searchEngines)];
+
+      for (const engine of uniqueEngines) {
+        try {
+          const identifier = `${engine}:${query}`;
+          const raw = await node.rest.loadTracks(identifier);
+          const formatted = this.formatLoadResult(raw, requester);
+          if (formatted && formatted.tracks && formatted.tracks.length > 0) {
+            result = formatted;
+            break;
+          }
+        } catch (err) {
+          // Continue to next fallback engine
+        }
+      }
+    }
+
+    if (!result || !result.tracks || result.tracks.length === 0) {
+      return { loadType: 'empty', tracks: [] };
+    }
+
+    cacheManager.setTrackInfo(query, result);
     return result;
   }
 
