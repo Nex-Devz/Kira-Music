@@ -13,10 +13,9 @@ class FilterSelectHandler {
 
     const canFilter = premiumManager.canUseFilter(selectedValue, guildId, interaction.user.id);
     if (!canFilter && selectedValue !== 'none') {
-      return interaction.reply({
-        ...uiTemplates.buildErrorMessage(`The **${selectedValue}** audio filter requires an upgraded Premium tier. Use \`/premium\` to view plans.`),
-        ephemeral: true
-      });
+      return interaction.reply(
+        uiTemplates.buildErrorMessage(`The **${selectedValue}** audio filter requires an upgraded Premium tier. Use \`/premium\` to view plans.`)
+      );
     }
 
     await musicManager.applyFilter(guildId, selectedValue);

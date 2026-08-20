@@ -10,22 +10,19 @@ class ModalRouter {
       const desc = interaction.fields.getTextInputValue('playlist_desc') || '';
       try {
         const created = playlistRepo.create(interaction.user.id, interaction.guildId, name, desc);
-        return interaction.reply({
-          ...uiTemplates.buildSuccessMessage(`Created playlist **${created.name}**.`),
-          ephemeral: true
-        });
+        return interaction.reply(
+          uiTemplates.buildSuccessMessage(`Created playlist **${created.name}**.`)
+        );
       } catch (err) {
-        return interaction.reply({
-          ...uiTemplates.buildErrorMessage(err.message),
-          ephemeral: true
-        });
+        return interaction.reply(
+          uiTemplates.buildErrorMessage(err.message)
+        );
       }
     }
 
-    return interaction.reply({
-      ...uiTemplates.buildSuccessMessage('Action processed successfully.'),
-      ephemeral: true
-    });
+    return interaction.reply(
+      uiTemplates.buildSuccessMessage('Action processed successfully.')
+    );
   }
 }
 

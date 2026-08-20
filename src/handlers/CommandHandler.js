@@ -92,7 +92,7 @@ class CommandHandler {
     const command = this.commands.get(commandName);
 
     if (!command) {
-      return interaction.reply({ content: 'Command not found.', ephemeral: true });
+      return interaction.reply({ content: 'Command not found.', flags: 64 });
     }
 
     const context = new CommandContext(interaction);

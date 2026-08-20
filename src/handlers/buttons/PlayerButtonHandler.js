@@ -40,10 +40,7 @@ class PlayerButtonHandler {
         break;
 
       case 'queue':
-        await interaction.reply({
-          ...uiTemplates.buildQueueView(player, 1),
-          ephemeral: true
-        });
+        await interaction.reply(uiTemplates.buildQueueView(player, 1));
         break;
 
       case 'lyrics': {
@@ -52,10 +49,9 @@ class PlayerButtonHandler {
           return interaction.reply(uiTemplates.buildErrorMessage('No track currently playing.'));
         }
         const lyricsText = `Lyrics for ${curTrack.title || 'Unknown'}\n\n(Synced lyrics stream active.)`;
-        await interaction.reply({
-          ...uiTemplates.buildLyricsView(curTrack.title || 'Current Song', curTrack.author || 'Artist', lyricsText, 1),
-          ephemeral: true
-        });
+        await interaction.reply(
+          uiTemplates.buildLyricsView(curTrack.title || 'Current Song', curTrack.author || 'Artist', lyricsText, 1)
+        );
         break;
       }
 
@@ -69,10 +65,9 @@ class PlayerButtonHandler {
           uri: player.currentTrack.uri || player.currentTrack.info?.uri,
           duration: player.currentTrack.duration || player.currentTrack.info?.duration
         });
-        await interaction.reply({
-          ...uiTemplates.buildSuccessMessage(`Added **${player.currentTrack.title}** to your favorites!`),
-          ephemeral: true
-        });
+        await interaction.reply(
+          uiTemplates.buildSuccessMessage(`Added **${player.currentTrack.title}** to your favorites!`)
+        );
         break;
       }
 
@@ -88,7 +83,7 @@ class PlayerButtonHandler {
 
       case 'shuffle':
         player.queue.shuffle();
-        await interaction.reply({ ...uiTemplates.buildSuccessMessage('Shuffled the queue.'), ephemeral: true });
+        await interaction.reply(uiTemplates.buildSuccessMessage('Shuffled the queue.'));
         break;
 
       case 'loop': {
@@ -123,41 +118,36 @@ class PlayerButtonHandler {
       case '247': {
         const can247 = premiumManager.canUse247(guildId, interaction.user.id);
         if (!can247) {
-          return interaction.reply({
-            ...uiTemplates.buildErrorMessage('24/7 Mode requires a Gold or Diamond Premium tier. Use `/premium` to upgrade.'),
-            ephemeral: true
-          });
+          return interaction.reply(
+            uiTemplates.buildErrorMessage('24/7 Mode requires a Gold or Diamond Premium tier. Use `/premium` to upgrade.')
+          );
         }
         player.is247 = !player.is247;
         guildRepo.update(guildId, { mode_247: player.is247 ? 1 : 0 });
-        await interaction.reply({
-          ...uiTemplates.buildSuccessMessage(`24/7 Mode is now **${player.is247 ? 'Enabled' : 'Disabled'}**.`),
-          ephemeral: true
-        });
+        await interaction.reply(
+          uiTemplates.buildSuccessMessage(`24/7 Mode is now **${player.is247 ? 'Enabled' : 'Disabled'}**.`)
+        );
         break;
       }
 
       case 'favorites': {
         const favs = userRepo.getFavorites(interaction.user.id);
         if (favs.length === 0) {
-          return interaction.reply({
-            ...uiTemplates.buildErrorMessage('You have no favorited songs. Play a song and click "Favorite" to add one!'),
-            ephemeral: true
-          });
+          return interaction.reply(
+            uiTemplates.buildErrorMessage('You have no favorited songs. Play a song and click "Favorite" to add one!')
+          );
         }
         const favList = favs.slice(0, 10).map((f, i) => `\`${i + 1}.\` **${f.title}** - ${f.author}`).join('\n');
-        await interaction.reply({
-          ...uiTemplates.buildSuccessMessage(`### Your Favorites\n${favList}`),
-          ephemeral: true
-        });
+        await interaction.reply(
+          uiTemplates.buildSuccessMessage(`### Your Favorites\n${favList}`)
+        );
         break;
       }
 
       case 'help':
-        await interaction.reply({
-          ...uiTemplates.buildHelpMenu('music', permissionManager.isDeveloper(interaction.user.id)),
-          ephemeral: true
-        });
+        await interaction.reply(
+          uiTemplates.buildHelpMenu('music', permissionManager.isDeveloper(interaction.user.id))
+        );
         break;
 
       default:

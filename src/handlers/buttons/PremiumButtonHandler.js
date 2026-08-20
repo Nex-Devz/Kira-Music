@@ -6,10 +6,9 @@ class PremiumButtonHandler {
     const guildId = interaction.guildId;
     if (action === 'perks') {
       const tier = premiumManager.getTier(interaction.user.id, guildId);
-      await interaction.reply({
-        ...uiTemplates.buildPremiumDashboard(tier, premiumManager.getEntitlement(interaction.user.id), premiumManager.getEntitlement(guildId)),
-        ephemeral: true
-      });
+      await interaction.reply(
+        uiTemplates.buildPremiumDashboard(tier, premiumManager.getEntitlement(interaction.user.id), premiumManager.getEntitlement(guildId))
+      );
     }
   }
 }
