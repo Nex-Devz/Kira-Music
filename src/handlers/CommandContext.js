@@ -28,13 +28,25 @@ class CommandContext {
   async deferReply(options = {}) {
     if (this.isInteraction) {
       if (!this.source.deferred && !this.source.replied) {
-        await this.source.deferReply(options.ephemeral ? { flags: 64 } : {});
+        try {
+          await this.source.deferReply(options.ephemeral ? { flags: 64 } : {});
+          this.deferred = true;
+        } catch (e) {
+          if (e.code === 10062 || e.code === 40060) {
+            this.deferred = true;
+          } else {
+            throw e;
+          }
+        }
+      } else {
         this.deferred = true;
       }
     } else {
       // In prefix/message mode, show loading indicator
-      this.loadingMessage = await this.channel.send(uiTemplates.buildLoadingMessage('Processing request...'));
-      this.deferred = true;
+      try {
+        this.loadingMessage = await this.channel.send(uiTemplates.buildLoadingMessage('Processing request...'));
+        this.deferred = true;
+      } catch (e) {}
     }
   }
 
@@ -49,12 +61,23 @@ class CommandContext {
     }
 
     if (this.isInteraction) {
-      if (this.deferred || this.source.deferred) {
+      try {
+        if (this.deferred || this.source.deferred || this.source.replied) {
+          this.replied = true;
+          return await this.source.editReply(normalized);
+        }
         this.replied = true;
-        return this.source.editReply(normalized);
+        return await this.source.reply(normalized);
+      } catch (e) {
+        if (e.code === 10062 || e.code === 40060) {
+          // Interaction timed out or duplicate acknowledge, fallback to channel send
+          try {
+            return await this.channel.send(normalized);
+          } catch (channelErr) {}
+        } else {
+          throw e;
+        }
       }
-      this.replied = true;
-      return this.source.reply(normalized);
     } else {
       if (this.loadingMessage && this.loadingMessage.deletable) {
         try {

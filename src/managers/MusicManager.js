@@ -136,8 +136,14 @@ class MusicManager {
     const defLoop = guildData.loop_mode || 'off';
     const autoplay = Boolean(guildData.autoplay);
 
+    const node = this.kumo.nodes.pick(guildId) || this.kumo.nodes.getAll()[0];
+    if (!node) {
+      throw new Error('No Lavalink nodes are currently available.');
+    }
+
     player = this.kumo.players.create({
       guildId,
+      node,
       voiceChannelId,
       textChannelId,
       volume: defVol
