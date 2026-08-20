@@ -49,8 +49,11 @@ async function runTests() {
   assert.strictEqual(prem.tier, 'gold');
 
   // Blacklist Repo Test
-  blacklistRepo.add('bad_user_' + Date.now(), 'user', 'Spam', 'admin');
-  assert.strictEqual(blacklistRepo.isBlacklisted('bad_user_' + Date.now()), false);
+  const badUser = 'bad_user_' + Date.now();
+  blacklistRepo.add(badUser, 'user', 'Spam', 'admin');
+  assert.strictEqual(blacklistRepo.isBlacklisted(badUser), true);
+  blacklistRepo.remove(badUser);
+  assert.strictEqual(blacklistRepo.isBlacklisted(badUser), false);
 
   console.log('✓ Database and all repositories verified successfully.\n');
 
