@@ -8,6 +8,7 @@ module.exports = {
     if (interaction.isChatInputCommand()) {
       await commandHandler.handleInteraction(interaction);
     } else if (
+      interaction.isAutocomplete() ||
       interaction.isButton() ||
       interaction.isStringSelectMenu() ||
       interaction.isChannelSelectMenu() ||
