@@ -1,0 +1,36 @@
+services:
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4
+    container_name: kira_lavalink
+    restart: unless-stopped
+    environment:
+      - _JAVA_OPTIONS=-Xmx1G
+    volumes:
+      - ./application.yml:/opt/Lavalink/application.yml
+    ports:
+      - "2333:2333"
+    networks:
+      - kira_network
+
+  kira:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kira_bot
+    restart: unless-stopped
+    depends_on:
+      - lavalink
+    env_file:
+      - .env
+    environment:
+      - LAVALINK_HOST=lavalink
+      - LAVALINK_PORT=2333
+      - NODE_ENV=production
+    volumes:
+      - ./data:/app/data
+    networks:
+      - kira_network
+
+networks:
+  kira_network:
+    driver: bridge

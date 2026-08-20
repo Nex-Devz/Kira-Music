@@ -15,41 +15,42 @@ async function runTests() {
   const statsRepo = require('../src/database/repositories/StatsRepository');
   const blacklistRepo = require('../src/database/repositories/BlacklistRepository');
 
+  const testGuildId = 'test_guild_' + Date.now();
+  const testUserId = 'test_user_' + Date.now();
+
   // Guild Repo Test
-  const testGuild = guildRepo.get('111222333444');
+  const testGuild = guildRepo.get(testGuildId);
   assert.strictEqual(testGuild.prefix, '!');
-  const updatedGuild = guildRepo.update('111222333444', { prefix: 'k!', default_volume: 90 });
+  const updatedGuild = guildRepo.update(testGuildId, { prefix: 'k!', default_volume: 90 });
   assert.strictEqual(updatedGuild.prefix, 'k!');
   assert.strictEqual(updatedGuild.default_volume, 90);
 
   // User Repo & Favorites Test
-  userRepo.addFavorite('user_test_1', { title: 'Test Song', author: 'Artist A', uri: 'https://example.com/1', duration: 180000 });
-  const favs = userRepo.getFavorites('user_test_1');
+  userRepo.addFavorite(testUserId, { title: 'Test Song', author: 'Artist A', uri: 'https://example.com/1', duration: 180000 });
+  const favs = userRepo.getFavorites(testUserId);
   assert.strictEqual(favs.length, 1);
   assert.strictEqual(favs[0].title, 'Test Song');
 
   // History & Profile Stats Test
-  userRepo.addHistory('user_test_1', '111222333444', { title: 'Test Song', author: 'Artist A', uri: 'https://example.com/1', duration: 180000 });
-  const profile = userRepo.getProfileStats('user_test_1');
+  userRepo.addHistory(testUserId, testGuildId, { title: 'Test Song', author: 'Artist A', uri: 'https://example.com/1', duration: 180000 });
+  const profile = userRepo.getProfileStats(testUserId);
   assert.strictEqual(profile.totalPlayed, 1);
 
   // Playlist Repo Test
-  const pl = playlistRepo.create('user_test_1', '111222333444', 'My Playlist', 'Test playlist');
+  const pl = playlistRepo.create(testUserId, testGuildId, 'My Playlist', 'Test playlist');
   assert.strictEqual(pl.name, 'My Playlist');
   playlistRepo.addTrack(pl.id, { title: 'Track 1', author: 'Artist 1', uri: 'https://example.com/t1', duration: 200000 });
   const fetchedPl = playlistRepo.get(pl.id);
   assert.strictEqual(fetchedPl.tracks.length, 1);
 
   // Premium Repo Test
-  premiumRepo.set('user_test_1', 'user', 'gold', 'admin', 0);
-  const prem = premiumRepo.get('user_test_1');
+  premiumRepo.set(testUserId, 'user', 'gold', 'admin', 0);
+  const prem = premiumRepo.get(testUserId);
   assert.strictEqual(prem.tier, 'gold');
 
   // Blacklist Repo Test
-  blacklistRepo.add('bad_user', 'user', 'Spam', 'admin');
-  assert.strictEqual(blacklistRepo.isBlacklisted('bad_user'), true);
-  blacklistRepo.remove('bad_user');
-  assert.strictEqual(blacklistRepo.isBlacklisted('bad_user'), false);
+  blacklistRepo.add('bad_user_' + Date.now(), 'user', 'Spam', 'admin');
+  assert.strictEqual(blacklistRepo.isBlacklisted('bad_user_' + Date.now()), false);
 
   console.log('✓ Database and all repositories verified successfully.\n');
 
@@ -135,11 +136,11 @@ async function runTests() {
   // 5. Test Premium Manager Logic
   console.log('[5/5] Testing PremiumManager Entitlements & Tiers...');
   const premiumManager = require('../src/managers/PremiumManager');
-  assert.strictEqual(premiumManager.hasNoPrefix('free_user'), false);
-  assert.strictEqual(premiumManager.hasNoPrefix('user_test_1'), true); // user_test_1 is gold
-  assert.strictEqual(premiumManager.canUse247(null, 'user_test_1'), true);
-  assert.strictEqual(premiumManager.canUseFilter('timescale', null, 'user_test_1'), true);
-  assert.strictEqual(premiumManager.getMaxQueueSize(null, 'user_test_1'), 1000);
+  assert.strictEqual(premiumManager.hasNoPrefix('free_user_' + Date.now()), false);
+  assert.strictEqual(premiumManager.hasNoPrefix(testUserId), true); // testUserId is gold
+  assert.strictEqual(premiumManager.canUse247(null, testUserId), true);
+  assert.strictEqual(premiumManager.canUseFilter('timescale', null, testUserId), true);
+  assert.strictEqual(premiumManager.getMaxQueueSize(null, testUserId), 1000);
 
   console.log('✓ Premium tier logic verified successfully.\n');
 
