@@ -42,7 +42,7 @@ Kira is structured into decoupled, single-responsibility layers:
            v                                       v
 +-----------------------+              +-----------------------+
 |     MusicManager      |              |   Database Services   |
-|   (YuKumo Lavalink)   |              | (SQLite Repositories) |
+| (Kazagumo + Shoukaku) |              | (SQLite Repositories) |
 +-----------------------+              +-----------------------+
            |                                       |
            +-------------------+-------------------+
@@ -73,8 +73,8 @@ Instead of legacy embed objects, Kira uses native Discord Components V2 structur
 - **ActionRow (`type: 1`) & Interactive Elements**: Buttons (`type: 2`), String Selects (`type: 3`), Channel Selects (`type: 8`), and Role Selects (`type: 6`).
 
 ### 2.2 Audio Client Layer (`src/managers/MusicManager.js`)
-- Uses **YuKumo** to communicate with Lavalink v4 nodes over WebSockets and REST.
-- Subscribes to Discord gateway raw voice events via `DiscordJSAdapter`.
+- Uses **Kazagumo** and **Shoukaku** to communicate with Lavalink v4 nodes over WebSockets and REST.
+- Subscribes to Discord gateway raw voice events via `Connectors.DiscordJS`.
 - Manages player instances, audio queues, and active DSP filters.
 - Tracks player state persistence for 24/7 restoration after process restarts.
 - Autoplay candidate resolver: searches related tracks when queues finish.

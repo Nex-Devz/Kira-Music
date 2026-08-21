@@ -1,7 +1,7 @@
 {
   "name": "kira-music-bot",
   "version": "1.0.0",
-  "description": "Production-ready modern Discord Music Bot with Discord Components V2, YuKumo Lavalink v4, and Canvas player UI.",
+  "description": "Production-ready modern Discord Music Bot with Discord Components V2, Kazagumo + Shoukaku Lavalink v4, and Canvas player UI.",
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
@@ -12,7 +12,8 @@
     "discord",
     "music-bot",
     "lavalink",
-    "yukumo",
+    "kazagumo",
+    "shoukaku",
     "components-v2",
     "canvas",
     "discordjs"
@@ -25,7 +26,8 @@
     "colorette": "^2.0.20",
     "discord.js": "^14.17.3",
     "dotenv": "^16.4.7",
+    "kazagumo": "^3.4.3",
     "lru-cache": "^11.0.2",
-    "yukumo": "^1.8.0"
+    "shoukaku": "^4.3.0"
   }
 }

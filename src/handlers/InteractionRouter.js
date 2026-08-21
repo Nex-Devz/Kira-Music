@@ -88,6 +88,10 @@ class InteractionRouter {
         }
         break;
 
+      case 'help':
+        await helpSelectHandler.handleButton(interaction, action, param1);
+        break;
+
       default:
         await interaction.reply(uiTemplates.buildErrorMessage('Unknown button action.'));
         break;

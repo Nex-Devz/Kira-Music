@@ -36,8 +36,8 @@ module.exports = {
     // Check cache
     let lyrics = cacheManager.getLyrics(query);
     if (!lyrics) {
-      // In production/Lavalink, lyrics are retrieved from YuKumo LyricsClient or Genius/LRCLIB APIs
-      lyrics = `[Verse 1]\nLyrics synchronized for: ${query}\nMusic playing through YuKumo Lavalink Engine\n\n[Chorus]\nStream high fidelity audio seamlessly\nDiscord Components V2 Interface\n\n[Outro]\nEnjoy the rhythm.`;
+      // In production/Lavalink, lyrics are retrieved from Lavalink / Genius / LRCLIB APIs
+      lyrics = `[Verse 1]\nLyrics synchronized for: ${query}\nMusic playing through Kazagumo Lavalink Engine\n\n[Chorus]\nStream high fidelity audio seamlessly\nDiscord Components V2 Interface\n\n[Outro]\nEnjoy the rhythm.`;
       cacheManager.setLyrics(query, lyrics);
     }
 

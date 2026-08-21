@@ -19,7 +19,7 @@ module.exports = {
       status: 'online'
     });
 
-    // Initialize YuKumo Lavalink Music Client
+    // Initialize Kazagumo Lavalink Music Client
     musicManager.init(client);
 
     // Register slash commands globally

@@ -1,4 +1,5 @@
-const { YuKumo, DiscordJSAdapter, EVENT_TYPES } = require('yukumo');
+const { Kazagumo, KazagumoTrack, Events } = require('kazagumo');
+const { Connectors } = require('shoukaku');
 const config = require('../config');
 const guildRepo = require('../database/repositories/GuildRepository');
 const userRepo = require('../database/repositories/UserRepository');
@@ -9,60 +10,100 @@ const cacheManager = require('./CacheManager');
 
 class MusicManager {
   constructor() {
-    this.kumo = null;
-    this.adapter = null;
+    this.kazagumo = null;
     this.client = null;
     this.playerMessages = new Map(); // guildId -> messageId
     this.maintenance = false;
   }
 
   /**
-   * Initialize YuKumo and attach Discord adapter
+   * Backward compatibility getter for kumo
+   */
+  get kumo() {
+    return this.kazagumo;
+  }
+
+  /**
+   * Initialize Kazagumo and attach Shoukaku Discord.js connector
    */
   init(client) {
+    if (this.kazagumo) return;
     this.client = client;
 
-    this.kumo = new YuKumo({
-      nodes: config.lavalink.nodes,
-      defaultSearchSource: config.lavalink.defaultSearchEngine || 'ytsearch',
-      userId: client.user?.id,
-      playerDefaults: {
-        autoplay: false,
-        minAutoPlayMs: 10000,
-        queueEmptyDestroyMs: 120000
-      }
-    });
+    const nodes = (config.lavalink.nodes || []).map(n => ({
+      name: n.name || 'Default-Node',
+      url: `${n.host}:${n.port}`,
+      auth: n.password,
+      secure: Boolean(n.secure)
+    }));
 
-    this.adapter = new DiscordJSAdapter(client, this.kumo);
+    const shoukakuOptions = {
+      moveOnDisconnect: true,
+      resumable: true,
+      resumableTimeout: 30,
+      reconnectTries: 10,
+      restTimeout: 10000
+    };
+
+    const connector = new Connectors.DiscordJS(client);
+
+    this.kazagumo = new Kazagumo(
+      {
+        defaultSearchEngine: config.lavalink.defaultSearchEngine || 'youtube',
+        send: (guildId, payload) => {
+          const guild = client.guilds.cache.get(guildId);
+          if (guild) guild.shard.send(payload);
+        }
+      },
+      connector,
+      nodes,
+      shoukakuOptions
+    );
+
+    // If client is already ready, connect to nodes immediately
+    if (client.isReady?.() || client.user?.id) {
+      try {
+        this.kazagumo.shoukaku.connector.ready(nodes);
+      } catch (err) {
+        console.error('[Kazagumo] Connector ready error:', err?.message || err);
+      }
+    }
+
     this.registerEvents();
   }
 
+  /**
+   * Register Kazagumo and Shoukaku Node events
+   */
   registerEvents() {
-    if (!this.kumo) return;
+    if (!this.kazagumo) return;
 
-    // YuKumo Node Events
-    for (const node of this.kumo.nodes.values()) {
-      node.ws.eventDispatcher.on('nodeReady', () => {
-        console.log(`[YuKumo] Lavalink Node "${node.name}" connected and ready.`);
-      });
+    // Shoukaku Node Lifecycle Events
+    this.kazagumo.shoukaku.on('ready', (name) => {
+      console.log(`[Kazagumo] Lavalink Node "${name}" connected and ready.`);
+    });
 
-      node.ws.eventDispatcher.on('nodeReconnected', () => {
-        console.log(`[YuKumo] Lavalink Node "${node.name}" reconnected.`);
-      });
+    this.kazagumo.shoukaku.on('reconnecting', (name, left, interval) => {
+      console.log(`[Kazagumo] Lavalink Node "${name}" reconnecting (tries left: ${left}, interval: ${interval}ms)...`);
+    });
 
-      node.ws.eventDispatcher.on('nodeDisconnect', (_nodeId, reason) => {
-        console.warn(`[YuKumo] Lavalink Node "${node.name}" disconnected. Reason:`, reason);
-      });
+    this.kazagumo.shoukaku.on('disconnect', (name, count) => {
+      console.warn(`[Kazagumo] Lavalink Node "${name}" disconnected. Reconnect count: ${count}`);
+    });
 
-      node.ws.eventDispatcher.on('nodeError', (_nodeId, error) => {
-        console.error(`[YuKumo] Lavalink Node "${node.name}" error:`, error?.message || error);
-      });
-    }
+    this.kazagumo.shoukaku.on('close', (name, code, reason) => {
+      console.warn(`[Kazagumo] Lavalink Node "${name}" closed connection (${code}): ${reason}`);
+    });
 
-    // Track Start Event
-    this.kumo.events.on(EVENT_TYPES.TRACK_START, async (event) => {
-      const { player, track } = event;
+    this.kazagumo.shoukaku.on('error', (name, error) => {
+      console.error(`[Kazagumo] Lavalink Node "${name}" error:`, error?.message || error);
+    });
+
+    // Kazagumo Player: Track Start Event
+    this.kazagumo.on(Events.PlayerStart, async (player, track) => {
       if (!player || !track) return;
+
+      this.patchPlayer(player);
 
       const guildId = player.guildId;
       const requesterId = track.requester?.id || track.requesterId;
@@ -73,23 +114,29 @@ class MusicManager {
           title: track.title || track.info?.title,
           author: track.author || track.info?.author,
           uri: track.uri || track.info?.uri,
-          duration: track.duration || track.info?.duration || track.length
+          duration: track.length || track.duration || track.info?.duration
         });
 
-        statsRepo.recordPlay(guildId, requesterId, track.duration || track.info?.duration || 0);
+        statsRepo.recordPlay(guildId, requesterId, track.length || track.duration || 0);
       }
 
       // Update persistent player UI
       await this.updatePlayerMessage(player);
     });
 
-    // Track End Event
-    this.kumo.events.on(EVENT_TYPES.TRACK_END, async (event) => {
-      const { player, reason } = event;
+    // Kazagumo Player: Track End Event
+    this.kazagumo.on(Events.PlayerEnd, async (player) => {
       if (!player) return;
+      this.patchPlayer(player);
+    });
+
+    // Kazagumo Player: Queue Empty Event
+    this.kazagumo.on(Events.PlayerEmpty, async (player) => {
+      if (!player) return;
+      this.patchPlayer(player);
 
       // Autoplay handler when queue becomes empty
-      if (player.autoplay && player.queue.isEmpty()) {
+      if (player.autoplay) {
         try {
           await this.triggerAutoplay(player);
         } catch (err) {
@@ -98,75 +145,181 @@ class MusicManager {
       }
     });
 
-    // Track Exception / Error Event
-    this.kumo.events.on(EVENT_TYPES.TRACK_EXCEPTION, async (event) => {
-      const { player, error } = event;
-      console.error(`[YuKumo] Track exception in guild ${player?.guildId}:`, error);
+    // Kazagumo Player: Exception / Error Events
+    this.kazagumo.on(Events.PlayerException, async (player, error) => {
+      console.error(`[Kazagumo] Track exception in guild ${player?.guildId}:`, error);
+    });
+
+    this.kazagumo.on(Events.PlayerError, async (player, error) => {
+      console.error(`[Kazagumo] Player error in guild ${player?.guildId}:`, error);
+    });
+
+    this.kazagumo.on(Events.PlayerClosed, async (player) => {
+      if (!player) return;
+      this.patchPlayer(player);
+      await this.updatePlayerMessage(player, true);
+    });
+
+    this.kazagumo.on(Events.PlayerDestroy, async (player) => {
+      if (!player) return;
+      this.patchPlayer(player);
     });
   }
 
   /**
-   * Get existing player or null
+   * Helper to ensure player compatibility aliases
    */
-  getPlayer(guildId) {
-    if (!this.kumo) return null;
-    return this.kumo.players.get(guildId) || null;
-  }
+  patchPlayer(player) {
+    if (!player) return player;
 
-  /**
-   * Get or create player for guild
-   */
-  createPlayer(guildId, voiceChannelId, textChannelId) {
-    if (!this.kumo) throw new Error('YuKumo music engine not initialized.');
+    if (!player.activeFilters) player.activeFilters = [];
+    if (player.autoplay === undefined) player.autoplay = false;
+    if (player.is247 === undefined) player.is247 = false;
+    if (player.loop === undefined) player.loop = 'off';
 
-    let player = this.kumo.players.get(guildId);
-    if (player) {
-      if (voiceChannelId && player.voiceChannelId !== voiceChannelId) {
-        player.setVoice(voiceChannelId);
-      }
-      if (textChannelId) {
-        player.textChannelId = textChannelId;
-      }
-      return player;
+    // Current track getter
+    if (!Object.getOwnPropertyDescriptor(player, 'currentTrack')) {
+      Object.defineProperty(player, 'currentTrack', {
+        get() {
+          return this.queue?.current || null;
+        },
+        set(val) {
+          if (this.queue) this.queue.current = val;
+        },
+        configurable: true
+      });
     }
 
-    const guildData = guildRepo.get(guildId);
-    const is247 = Boolean(guildData.mode_247);
-    const defVol = guildData.default_volume || 80;
-    const defLoop = guildData.loop_mode || 'off';
-    const autoplay = Boolean(guildData.autoplay);
-
-    const node = this.kumo.nodes.pick(guildId) || this.kumo.nodes.getAll()[0];
-    if (!node) {
-      throw new Error('No Lavalink nodes are currently available.');
+    // Voice & Text channel ID compatibility
+    if (!Object.getOwnPropertyDescriptor(player, 'voiceChannelId')) {
+      Object.defineProperty(player, 'voiceChannelId', {
+        get() {
+          return this.voiceId;
+        },
+        set(val) {
+          this.voiceId = val;
+        },
+        configurable: true
+      });
     }
 
-    player = this.kumo.players.create({
-      guildId,
-      node,
-      voiceChannelId,
-      textChannelId,
-      volume: defVol
-    });
+    if (!Object.getOwnPropertyDescriptor(player, 'textChannelId')) {
+      Object.defineProperty(player, 'textChannelId', {
+        get() {
+          return this.textId;
+        },
+        set(val) {
+          this.textId = val;
+        },
+        configurable: true
+      });
+    }
 
-    player.activeFilters = [];
-    player.autoplay = autoplay;
-    player.is247 = is247;
-    player.loop = defLoop;
+    // Queue tracks compatibility
+    if (player.queue) {
+      if (!Object.getOwnPropertyDescriptor(player.queue, 'tracksList')) {
+        Object.defineProperty(player.queue, 'tracksList', {
+          get() {
+            return this;
+          },
+          configurable: true
+        });
+      }
 
-    if (is247 && typeof player.setStayInVc === 'function') {
-      player.setStayInVc(true);
+      if (typeof player.queue.enqueue !== 'function') {
+        player.queue.enqueue = (tracks) => player.queue.add(tracks);
+      }
+
+      if (typeof player.queue.dequeue !== 'function') {
+        player.queue.dequeue = () => player.queue.shift();
+      }
+
+      const origIsEmpty = player.queue.isEmpty;
+      if (typeof origIsEmpty !== 'function') {
+        player.queue.isEmpty = function() {
+          return this.length === 0;
+        };
+      }
+    }
+
+    if (typeof player.setVoice !== 'function') {
+      player.setVoice = (voiceId) => player.setVoiceChannel(voiceId);
     }
 
     return player;
   }
 
   /**
-   * Format raw Lavalink track load result into consistent schema
+   * Get existing player or null
+   */
+  getPlayer(guildId) {
+    if (!this.kazagumo) return null;
+    const player = this.kazagumo.players.get(guildId) || null;
+    if (player) this.patchPlayer(player);
+    return player;
+  }
+
+  /**
+   * Get or create player for guild
+   */
+  async createPlayer(guildId, voiceChannelId, textChannelId) {
+    if (!this.kazagumo) throw new Error('Kazagumo music engine not initialized.');
+
+    let player = this.kazagumo.players.get(guildId);
+    if (player) {
+      this.patchPlayer(player);
+      if (voiceChannelId && player.voiceId !== voiceChannelId) {
+        await player.setVoiceChannel(voiceChannelId);
+      }
+      if (textChannelId && player.textId !== textChannelId) {
+        player.setTextChannel(textChannelId);
+      }
+      return player;
+    }
+
+    const guildData = guildRepo.get(guildId) || {};
+    const is247 = Boolean(guildData.mode_247);
+    const defVol = guildData.default_volume || 80;
+    const defLoop = guildData.loop_mode || 'off';
+    const autoplay = Boolean(guildData.autoplay);
+
+    player = await this.kazagumo.createPlayer({
+      guildId,
+      voiceId: voiceChannelId,
+      textId: textChannelId,
+      volume: defVol,
+      deaf: true
+    });
+
+    this.patchPlayer(player);
+
+    player.activeFilters = [];
+    player.autoplay = autoplay;
+    player.is247 = is247;
+    player.loop = defLoop;
+
+    if (defLoop !== 'off') {
+      player.setLoop(defLoop === 'off' ? 'none' : defLoop);
+    }
+
+    return player;
+  }
+
+  /**
+   * Get an available Lavalink node
+   */
+  getNode() {
+    if (!this.kazagumo?.shoukaku) return null;
+    const nodes = [...this.kazagumo.shoukaku.nodes.values()];
+    return nodes.find(n => n.state === 1) || nodes[0] || null;
+  }
+
+  /**
+   * Standardize raw Lavalink load result into formatted structure
    */
   formatLoadResult(raw, requester) {
-    if (!raw) return { loadType: 'empty', tracks: [] };
-    const loadType = raw.loadType || 'empty';
+    if (!raw) return { loadType: 'empty', type: 'SEARCH', tracks: [] };
+    const loadType = (raw.loadType || 'empty').toLowerCase();
 
     let rawTracks = [];
     if (loadType === 'track' && raw.data) {
@@ -180,19 +333,12 @@ class MusicManager {
     }
 
     const tracks = rawTracks.map(t => {
-      const track = { ...t };
-      if (t.info) {
-        track.title = t.title || t.info.title;
-        track.author = t.author || t.info.author;
-        track.duration = t.duration || t.info.duration || t.info.length;
-        track.length = track.duration;
-        track.uri = t.uri || t.info.uri;
-        track.artworkUrl = t.artworkUrl || t.info.artworkUrl;
-      }
-      if (requester) {
-        track.requester = requester;
-      }
-      return track;
+      const kTrack = new KazagumoTrack(t, requester);
+      kTrack.setKazagumo(this.kazagumo);
+      kTrack.duration = kTrack.length || t.info?.length || t.info?.duration || 0;
+      kTrack.artworkUrl = kTrack.thumbnail || t.info?.artworkUrl || null;
+      if (requester) kTrack.requester = requester;
+      return kTrack;
     });
 
     return {
@@ -200,23 +346,24 @@ class MusicManager {
       type: loadType.toUpperCase(),
       tracks,
       playlistInfo: raw.data?.info || raw.playlistInfo || null,
+      name: raw.data?.info?.name || raw.playlistName || null,
       exception: raw.exception || null
     };
   }
 
   /**
-   * Search for tracks using YuKumo with intelligent multi-engine fallback
+   * Search for tracks using Kazagumo with multi-engine fallback
    */
   async search(query, requester = null) {
-    if (!this.kumo) throw new Error('Music engine is not ready.');
+    if (!this.kazagumo) throw new Error('Kazagumo music engine is not ready.');
 
     const cached = cacheManager.getTrackInfo(query);
     if (cached) return cached;
 
-    // Pick connected node, or fallback to any configured node
-    const node = this.kumo.nodes.pick(query) || this.kumo.nodes.getAll()[0];
+    const node = this.getNode();
     if (!node) {
-      return { loadType: 'empty', tracks: [] };
+      console.warn('[MusicManager:search] No Lavalink node available.');
+      return { loadType: 'empty', type: 'SEARCH', tracks: [] };
     }
 
     const isUrl = /^https?:\/\//i.test(query);
@@ -226,34 +373,54 @@ class MusicManager {
 
     if (isUrl || hasPrefix) {
       try {
-        const raw = await node.rest.loadTracks(query);
+        const raw = await node.rest.resolve(query);
         result = this.formatLoadResult(raw, requester);
       } catch (err) {
-        console.error('[MusicManager:search] Direct load error:', err?.message || err);
+        console.error('[MusicManager:search] Direct resolve error:', err?.message || err);
       }
     } else {
       // Smart Multi-Engine search cascade
-      const defaultEngine = process.env.SEARCH_ENGINE || 'ytsearch';
-      const searchEngines = [defaultEngine, 'spsearch', 'ytmsearch', 'scsearch', 'ytsearch'];
-      const uniqueEngines = [...new Set(searchEngines)];
+      const defaultEngine = process.env.SEARCH_ENGINE || config.lavalink.defaultSearchEngine || 'spsearch';
+      const enginePrefixes = {
+        spotify: 'spsearch:',
+        spsearch: 'spsearch:',
+        youtube_music: 'ytmsearch:',
+        ytmsearch: 'ytmsearch:',
+        youtube: 'ytsearch:',
+        ytsearch: 'ytsearch:',
+        soundcloud: 'scsearch:',
+        scsearch: 'scsearch:',
+        deezer: 'dzsearch:',
+        dzsearch: 'dzsearch:'
+      };
 
-      for (const engine of uniqueEngines) {
+      const primaryPrefix = enginePrefixes[defaultEngine] || 'spsearch:';
+      const searchCascade = [
+        primaryPrefix,
+        'spsearch:',
+        'ytmsearch:',
+        'ytsearch:',
+        'scsearch:',
+        'dzsearch:'
+      ];
+      const uniqueCascade = [...new Set(searchCascade)];
+
+      for (const prefix of uniqueCascade) {
         try {
-          const identifier = `${engine}:${query}`;
-          const raw = await node.rest.loadTracks(identifier);
+          const raw = await node.rest.resolve(`${prefix}${query}`);
           const formatted = this.formatLoadResult(raw, requester);
           if (formatted && formatted.tracks && formatted.tracks.length > 0) {
             result = formatted;
             break;
           }
         } catch (err) {
-          // Continue to next fallback engine
+          // Continue to next cascade engine
         }
       }
     }
 
     if (!result || !result.tracks || result.tracks.length === 0) {
-      return { loadType: 'empty', tracks: [] };
+      return { loadType: 'empty', type: 'SEARCH', tracks: [] };
     }
 
     cacheManager.setTrackInfo(query, result);
@@ -264,33 +431,26 @@ class MusicManager {
    * Connect and start playing or add to queue
    */
   async play(guildId, voiceChannelId, textChannelId, trackOrPlaylist, requester) {
-    const player = this.createPlayer(guildId, voiceChannelId, textChannelId);
+    const player = await this.createPlayer(guildId, voiceChannelId, textChannelId);
 
     if (requester) {
       if (Array.isArray(trackOrPlaylist)) {
-        trackOrPlaylist.forEach(t => { t.requester = requester; });
+        trackOrPlaylist.forEach(t => {
+          t.requester = requester;
+          t.duration = t.length || t.duration || 0;
+        });
       } else if (trackOrPlaylist) {
         trackOrPlaylist.requester = requester;
+        trackOrPlaylist.duration = trackOrPlaylist.length || trackOrPlaylist.duration || 0;
       }
     }
 
-    if (Array.isArray(trackOrPlaylist)) {
-      for (const t of trackOrPlaylist) {
-        player.queue.enqueue(t);
-      }
-    } else if (trackOrPlaylist) {
-      player.queue.enqueue(trackOrPlaylist);
-    }
+    // Add to queue
+    player.queue.add(trackOrPlaylist);
 
-    if (!player.connected) {
-      await player.setVoice(voiceChannelId);
-    }
-
-    if (!player.currentTrack && !player.paused) {
-      const nextTrack = player.queue.dequeue();
-      if (nextTrack) {
-        await player.play(nextTrack);
-      }
+    // If not playing and not paused, start playback
+    if (!player.playing && !player.paused) {
+      await player.play();
     }
 
     return player;
@@ -303,7 +463,7 @@ class MusicManager {
     const player = this.getPlayer(guildId);
     if (!player) return null;
 
-    if (player.queue.isEmpty()) {
+    if (player.queue.length === 0 && !player.queue.current) {
       if (player.autoplay) {
         await this.triggerAutoplay(player);
         return player.currentTrack;
@@ -311,11 +471,8 @@ class MusicManager {
       return null;
     }
 
-    const nextTrack = player.queue.dequeue();
-    if (nextTrack) {
-      await player.play(nextTrack);
-    }
-    return nextTrack;
+    await player.play();
+    return player.currentTrack;
   }
 
   /**
@@ -324,7 +481,7 @@ class MusicManager {
   async pause(guildId) {
     const player = this.getPlayer(guildId);
     if (!player) throw new Error('No active player found.');
-    await player.pause();
+    player.pause(true);
     await this.updatePlayerMessage(player);
     return true;
   }
@@ -335,7 +492,7 @@ class MusicManager {
   async resume(guildId) {
     const player = this.getPlayer(guildId);
     if (!player) throw new Error('No active player found.');
-    await player.resume();
+    player.pause(false);
     await this.updatePlayerMessage(player);
     return true;
   }
@@ -356,37 +513,35 @@ class MusicManager {
   async previous(guildId) {
     const player = this.getPlayer(guildId);
     if (!player) throw new Error('No active player found.');
-    if (typeof player.playPrevious === 'function') {
-      await player.playPrevious();
-    } else if (player.queue?.historyList?.length > 0) {
-      const prevTrack = player.queue.historyList.pop();
-      if (prevTrack) {
-        if (player.currentTrack) {
-          player.queue.tracksList.unshift(player.currentTrack);
-        }
-        await player.play(prevTrack);
-      }
-    } else {
+
+    const prevTrack = player.getPrevious(true);
+    if (!prevTrack) {
       throw new Error('No previous track found in history.');
     }
+
+    if (player.currentTrack) {
+      player.queue.unshift(player.currentTrack);
+    }
+
+    await player.play(prevTrack);
     return true;
   }
 
   /**
-   * Stop and destroy player
+   * Stop and clear player
    */
   async stop(guildId) {
     const player = this.getPlayer(guildId);
     if (!player) return;
 
-    if (player.queue) {
-      player.queue.clear();
+    player.queue.clear();
+
+    if (player.shoukaku) {
+      await player.shoukaku.stopTrack();
     }
 
-    await player.stop();
-
     if (!player.is247) {
-      this.kumo.players.destroy(guildId);
+      await player.destroy();
     }
 
     // Update player message to idle state
@@ -417,22 +572,17 @@ class MusicManager {
   }
 
   /**
-   * Set loop mode
+   * Set loop mode ('off', 'track', 'queue')
    */
   setLoop(guildId, mode) {
     const player = this.getPlayer(guildId);
     if (!player) throw new Error('No active player found.');
 
-    const cleanMode = mode.toLowerCase(); // off, track, queue
-    player.loop = cleanMode;
+    const cleanMode = (mode || 'off').toLowerCase(); // off, track, queue
+    const kMode = cleanMode === 'off' ? 'none' : cleanMode;
 
-    if (cleanMode === 'track') {
-      player.queue.setRepeatMode?.('track');
-    } else if (cleanMode === 'queue') {
-      player.queue.setRepeatMode?.('queue');
-    } else {
-      player.queue.setRepeatMode?.('off');
-    }
+    player.setLoop(kMode);
+    player.loop = cleanMode;
 
     return cleanMode;
   }
@@ -448,64 +598,61 @@ class MusicManager {
   }
 
   /**
-   * Apply audio filter preset
+   * Apply audio filter preset via Shoukaku DSP filters
    */
   async applyFilter(guildId, filterPreset) {
     const player = this.getPlayer(guildId);
-    if (!player) throw new Error('No active player found.');
+    if (!player || !player.shoukaku) throw new Error('No active player found.');
 
     player.activeFilters = [];
+    const shoukakuPlayer = player.shoukaku;
 
     switch (filterPreset.toLowerCase()) {
       case 'none':
       case 'reset':
       case 'clear':
-        if (typeof player.clearFilters === 'function') {
-          await player.clearFilters();
-        }
+        await shoukakuPlayer.clearFilters();
         player.activeFilters = [];
         break;
 
       case 'bassboost':
-        if (typeof player.setBassboost === 'function') {
-          await player.setBassboost(true);
-        }
+        await shoukakuPlayer.setEqualizer([
+          { band: 0, gain: 0.35 },
+          { band: 1, gain: 0.30 },
+          { band: 2, gain: 0.20 },
+          { band: 3, gain: 0.10 }
+        ]);
         player.activeFilters = ['Bassboost'];
         break;
 
       case 'nightcore':
-        if (typeof player.setNightcore === 'function') {
-          await player.setNightcore(true);
-        }
+        await shoukakuPlayer.setTimescale({ speed: 1.25, pitch: 1.25, rate: 1.0 });
         player.activeFilters = ['Nightcore'];
         break;
 
       case 'vaporwave':
-        if (typeof player.setVaporwave === 'function') {
-          await player.setVaporwave(true);
-        }
+        await shoukakuPlayer.setTimescale({ speed: 0.85, pitch: 0.80, rate: 1.0 });
         player.activeFilters = ['Vaporwave'];
         break;
 
       case '8d':
       case 'rotation':
-        if (typeof player.setRotation === 'function') {
-          await player.setRotation({ rotationHz: 0.2 });
-        }
+        await shoukakuPlayer.setRotation({ rotationHz: 0.2 });
         player.activeFilters = ['8D'];
         break;
 
       case 'karaoke':
-        if (typeof player.setKaraoke === 'function') {
-          await player.setKaraoke({ level: 1.0, monoLevel: 1.0, filterBand: 220.0, filterWidth: 100.0 });
-        }
+        await shoukakuPlayer.setKaraoke({
+          level: 1.0,
+          monoLevel: 1.0,
+          filterBand: 220.0,
+          filterWidth: 100.0
+        });
         player.activeFilters = ['Karaoke'];
         break;
 
       case 'timescale':
-        if (typeof player.setTimescale === 'function') {
-          await player.setTimescale({ speed: 1.15, pitch: 1.15, rate: 1.0 });
-        }
+        await shoukakuPlayer.setTimescale({ speed: 1.15, pitch: 1.15, rate: 1.0 });
         player.activeFilters = ['Timescale'];
         break;
 
@@ -521,18 +668,20 @@ class MusicManager {
    * Autoplay recommendation engine
    */
   async triggerAutoplay(player) {
-    const lastTrack = player.currentTrack || player.queue?.historyList?.slice(-1)[0];
+    const lastTrack = player.currentTrack || player.getPrevious();
     if (!lastTrack) return;
 
     const query = `${lastTrack.title || lastTrack.info?.title} ${lastTrack.author || lastTrack.info?.author} related`;
-    const searchRes = await this.search(query, { username: 'Autoplay Engine' });
+    const searchRes = await this.search(query, { username: 'Autoplay' });
 
     if (searchRes && searchRes.tracks?.length > 0) {
-      // Pick first track that isn't the same URI
       const candidate = searchRes.tracks.find(t => t.uri !== lastTrack.uri) || searchRes.tracks[0];
       if (candidate) {
         candidate.requester = { username: 'Autoplay' };
-        await player.play(candidate);
+        player.queue.add(candidate);
+        if (!player.playing && !player.paused) {
+          await player.play();
+        }
       }
     }
   }
@@ -544,8 +693,8 @@ class MusicManager {
     if (!this.client || !player) return;
 
     const guildId = player.guildId;
-    const guildData = guildRepo.get(guildId);
-    const targetChannelId = guildData.player_channel_id || player.textChannelId;
+    const guildData = guildRepo.get(guildId) || {};
+    const targetChannelId = guildData.player_channel_id || player.textId || player.textChannelId;
     if (!targetChannelId) return;
 
     const channel = this.client.channels.cache.get(targetChannelId);
@@ -585,8 +734,8 @@ class MusicManager {
     for (const record of list) {
       if (record.voice_channel_id && record.guild_id) {
         try {
-          const player = this.createPlayer(record.guild_id, record.voice_channel_id, record.text_channel_id);
-          await player.setVoice(record.voice_channel_id);
+          const player = await this.createPlayer(record.guild_id, record.voice_channel_id, record.text_channel_id);
+          this.patchPlayer(player);
           console.log(`[MusicManager] Restored 24/7 player in guild ${record.guild_id}`);
         } catch (err) {
           console.error(`[MusicManager] Failed to restore 24/7 player in guild ${record.guild_id}:`, err);

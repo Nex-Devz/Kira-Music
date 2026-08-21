@@ -12,11 +12,11 @@
 ```
 
 **Next-Generation Production-Ready Discord Music Application**  
-*Built with Node.js • YuKumo (Lavalink v4) • Pure Discord Components V2 • Skia Canvas*
+*Built with Node.js • Kazagumo + Shoukaku (Lavalink v4) • Pure Discord Components V2 • Skia Canvas*
 
 [![Node.js Version](https://img.shields.io/badge/Node.js-v18%2B-blue?style=for-the-badge&logo=node.js)](https://nodejs.org)
 [![Discord.js](https://img.shields.io/badge/Discord.js-v14.17-5865F2?style=for-the-badge&logo=discord)](https://discord.js.org)
-[![Lavalink Client](https://img.shields.io/badge/YuKumo-v1.8-8A2BE2?style=for-the-badge)](https://yukumo.vercel.app)
+[![Lavalink Client](https://img.shields.io/badge/Kazagumo-v3.4-8A2BE2?style=for-the-badge)](https://github.com/Takiyo0/Kazagumo)
 [![Components V2](https://img.shields.io/badge/UI-Components%20V2-10B981?style=for-the-badge)](https://discord.com)
 [![License](https://img.shields.io/badge/License-MIT-orange?style=for-the-badge)](LICENSE)
 
@@ -53,7 +53,7 @@ Departing from traditional embed-heavy designs and emoji clutter, Kira utilizes 
 ## ✨ Key Features
 
 - **100% Discord Components V2 UI**: Zero legacy embeds. Every player card, queue page, lyrics viewer, settings panel, and confirmation dialog uses native Components V2 cards.
-- **YuKumo Lavalink v4 Client**: High-throughput audio node load balancing, automatic reconnection, queue management, and low latency track loading.
+- **Kazagumo + Shoukaku Lavalink v4 Client**: High-throughput audio node load balancing, automatic reconnection, queue management, and low latency track loading.
 - **Dynamic Skia Canvas Visuals**: High-resolution dark obsidian player banners with album art, ambient lighting glow, track progress bars, and requester metadata.
 - **Unified Command Execution**: Slash commands (`/play`), configurable prefix commands (`!play`), and Premium No-Prefix commands (`play`) share identical business logic through a unified `CommandContext`.
 - **4-Tier Premium Entitlement Engine**: Fully configurable `Free`, `Silver`, `Gold`, and `Diamond` tiers supporting No-Prefix, 24/7 Voice Stay, Autoplay, large queues (up to 5,000 tracks), and custom playlists.
@@ -88,7 +88,7 @@ graph TD
     
     Pipeline --> |Blacklist / Maint / Perms / Cooldown / Premium| CommandExec[Unified Command Execution]
     
-    CommandExec --> MusicMgr[MusicManager - YuKumo]
+    CommandExec --> MusicMgr[MusicManager - Kazagumo]
     CommandExec --> Database[SQLite Repositories]
     
     MusicMgr --> Lavalink[(Lavalink v4 Cluster)]
@@ -232,7 +232,7 @@ Kira includes **41 commands** organized into clear functional domains:
 
 ## 🎚️ Audio Filters & DSP
 
-Kira supports hardware-accelerated DSP audio filters powered by YuKumo:
+Kira supports hardware-accelerated DSP audio filters powered by Kazagumo & Shoukaku:
 - **Bass Boost**: Deep low-frequency equalizer boost.
 - **Nightcore**: Pitch and tempo acceleration.
 - **Vaporwave**: Pitch reduction and slow-motion tempo.

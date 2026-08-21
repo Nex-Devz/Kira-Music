@@ -28,7 +28,7 @@ module.exports = {
       `• **Guilds:** \`${guildsCount}\``,
       `• **Cached Users:** \`${usersCount}\``,
       `• **Active Music Players:** \`${activePlayers}\``,
-      `• **Lavalink Engine:** \`YuKumo v4 Client\``,
+      `• **Lavalink Engine:** \`Kazagumo v3 + Shoukaku v4\``,
       `• **UI Framework:** \`Discord Components V2\``
     ].join('\n');
 

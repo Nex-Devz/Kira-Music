@@ -568,123 +568,198 @@ class UITemplates {
   }
 
   // --- HELP COMMAND ---
-  buildHelpMenu(category = 'music', isDev = false) {
+  buildHelpMenu(category = 'home', isDev = false) {
+    const isHome = !category || category === 'home' || category === 'overview';
+
     const categories = {
       music: {
-        title: 'Music & Playback Commands',
+        name: 'Music & Playback',
+        icon: '🎵',
+        title: '🎵 Music & Playback Commands',
+        desc: 'Streaming, smart search, volume & playback controls',
+        count: 17,
         commands: [
-          '`/play <query>` - Play or queue a song / playlist from URL or name',
-          '`/search <query>` - Search and select from top results',
-          '`/pause` - Pause audio playback',
-          '`/resume` - Resume paused audio',
-          '`/skip` - Skip current playing track',
-          '`/previous` - Play previously played track',
-          '`/stop` - Stop playback and clear queue',
-          '`/restart` - Restart current track from beginning',
-          '`/seek <time>` - Seek to specified timestamp (e.g. 1m30s)',
-          '`/forward <sec>` - Seek forward by seconds',
-          '`/rewind <sec>` - Seek backward by seconds',
-          '`/volume <0-150>` - Set playback volume',
-          '`/nowplaying` - Display current track player card',
-          '`/loop <off|track|queue>` - Configure repeat mode',
-          '`/shuffle` - Shuffle tracks in queue',
-          '`/autoplay` - Toggle automatic playback of related songs',
-          '`/247` - Toggle 24/7 voice channel stay'
+          '`/play <query>` — Stream track/playlist from YouTube, Spotify, or URL',
+          '`/search <query>` — Search and choose from top audio matches',
+          '`/pause` • `/resume` — Pause or continue current audio stream',
+          '`/skip` • `/previous` — Jump to next or previous track',
+          '`/stop` — Clear active queue and stop playback',
+          '`/restart` — Replay current playing track from start',
+          '`/seek <time>` — Jump to timestamp (e.g. `1m30s`, `45s`)',
+          '`/forward <sec>` • `/rewind <sec>` — Fast-forward or rewind audio',
+          '`/volume <0-150>` — Adjust player volume output level',
+          '`/nowplaying` — Display real-time track card & progress',
+          '`/loop <off|track|queue>` — Configure track or queue repeat mode',
+          '`/shuffle` — Randomize tracks in the active queue',
+          '`/autoplay` — Toggle smart recommendation engine',
+          '`/247` — Toggle 24/7 continuous voice channel stay'
         ]
       },
       queue: {
-        title: 'Queue & Audio Management',
+        name: 'Queue & Audio',
+        icon: '🎛️',
+        title: '🎛️ Queue & Audio Management',
+        desc: 'Queue ordering, 6 DSP audio filters & lyrics',
+        count: 10,
         commands: [
-          '`/queue` - Display paginated queue view',
-          '`/queue add <query>` - Add track to queue',
-          '`/queue remove <pos>` - Remove track at position',
-          '`/queue move <from> <to>` - Move track to new position',
-          '`/queue clear` - Remove all tracks from queue',
-          '`/queue shuffle` - Shuffle the entire queue',
-          '`/queue jump <pos>` - Jump directly to queue position',
-          '`/filters` - Audio filter tuning panel',
-          '`/lyrics` - View lyrics for current or specified song',
-          '`/recommend` - Discover recommended tracks based on queue'
+          '`/queue [page]` — View paginated queue and current track',
+          '`/queue add <query>` — Append track to queue',
+          '`/queue remove <pos>` — Remove track by position index',
+          '`/queue move <from> <to>` — Move track to a new slot',
+          '`/queue clear` — Empty all songs from queue',
+          '`/queue shuffle` — Shuffle entire upcoming queue',
+          '`/queue jump <pos>` — Skip directly to queue index',
+          '`/filters [preset]` — Apply audio filters (Bass, Nightcore, 8D, etc.)',
+          '`/lyrics [song]` — Synchronized song lyrics display',
+          '`/recommend` — Discover similar tracks based on queue'
         ]
       },
       library: {
-        title: 'Personal Music Library & Playlists',
+        name: 'Library & Playlists',
+        icon: '📚',
+        title: '📚 Personal Library & Playlists',
+        desc: 'Custom playlists, favorites & listening history',
+        count: 12,
         commands: [
-          '`/favorite` - Add current track to your favorites',
-          '`/favorites` - View and play your favorited songs',
-          '`/history` - View your recent listening history',
-          '`/profile` - View your listening profile & analytics card',
-          '`/playlist create <name>` - Create a new playlist',
-          '`/playlist delete <name>` - Delete a playlist',
-          '`/playlist add <name> <track>` - Add track to playlist',
-          '`/playlist remove <name> <pos>` - Remove track from playlist',
-          '`/playlist play <name>` - Play an entire custom playlist',
-          '`/playlist list` - View your saved playlists',
-          '`/playlist view <name>` - View tracks inside a playlist',
-          '`/playlist import <url>` - Import playlist from external URL'
+          '`/favorite` — Save current playing track to favorites',
+          '`/favorites` — View and play your favorited songs',
+          '`/history` — Inspect your recently played tracks',
+          '`/profile` — View personal listening stats & profile card',
+          '`/playlist create <name>` — Create custom user playlist',
+          '`/playlist delete <name>` — Delete an existing playlist',
+          '`/playlist add <name> <track>` — Add song to playlist',
+          '`/playlist remove <name> <pos>` — Remove song from playlist',
+          '`/playlist play <name>` — Queue and play an entire playlist',
+          '`/playlist list` — View all your saved playlists',
+          '`/playlist view <name>` — Inspect songs inside a playlist',
+          '`/playlist import <url>` — Import playlist from external URL'
         ]
       },
       settings: {
-        title: 'Server Settings & Configuration',
+        name: 'Server Settings',
+        icon: '⚙️',
+        title: '⚙️ Server Settings & Configuration',
+        desc: 'DJ roles, persistent player, prefix & channel rules',
+        count: 6,
         commands: [
-          '`/settings` - Interactive server settings dashboard',
-          '`/setup` - First-time server setup wizard',
-          '`/prefix <new_prefix>` - Change guild prefix',
-          '`/dj <role>` - Configure DJ role for controls',
-          '`/player` - Configure persistent player channel',
-          '`/permissions` - View / manage music command permissions'
+          '`/settings` — Interactive server configuration dashboard',
+          '`/setup` — First-time guided setup wizard',
+          '`/prefix <new>` — Change server command prefix',
+          '`/dj <role>` — Assign DJ role for playback controls',
+          '`/player` — Set persistent player channel',
+          '`/permissions` — View and manage music permissions'
         ]
       },
       premium: {
-        title: 'Premium & Utility Commands',
+        name: 'Premium & Utility',
+        icon: '⭐',
+        title: '⭐ Premium & Utility Commands',
+        desc: 'Tier perks, latency ping, uptime & invite links',
+        count: 6,
         commands: [
-          '`/premium` - View active premium plan & entitlements',
-          '`/stats` - Server and global listening statistics',
-          '`/ping` - Check Discord API & Lavalink latency',
-          '`/botinfo` - View bot version, memory, and uptime',
-          '`/invite` - Get bot invite URL',
-          '`/support` - Join support community server'
+          '`/premium` — View active plan, perks & entitlements',
+          '`/stats` — Server and global streaming analytics',
+          '`/ping` — Check Discord Gateway & Lavalink latency',
+          '`/botinfo` — Memory usage, process uptime, cluster info',
+          '`/invite` — Get official bot invitation link',
+          '`/support` — Official support and community server'
         ]
       }
     };
 
     if (isDev) {
       categories.dev = {
-        title: 'Developer / Owner Commands',
+        name: 'Developer Tools',
+        icon: '🛠️',
+        title: '🛠️ Developer / Owner Suite',
+        desc: 'Lavalink nodes, player controls & system maintenance',
+        count: 9,
         commands: [
-          '`/dev nodes` - Lavalink node statistics and controls',
-          '`/dev guild <id>` - Inspect guild data and player state',
-          '`/dev player <id>` - Manage player instance',
-          '`/dev premium <grant|revoke>` - Manage premium entitlements',
-          '`/dev cache` - Inspect and flush memory caches',
-          '`/dev reload` - Reload command registry and modules',
-          '`/dev sync` - Force sync application slash commands',
-          '`/dev maintenance` - Toggle maintenance mode',
-          '`/dev blacklist <add|remove>` - Block malicious users/guilds'
+          '`/dev nodes` — Lavalink cluster node health & telemetry',
+          '`/dev guild <id>` — Inspect guild data and player state',
+          '`/dev player <id>` — Force stop or destroy player instance',
+          '`/dev premium <grant|revoke>` — Manage premium entitlements',
+          '`/dev cache` — Memory cache inspection & flush',
+          '`/dev reload` — Hot-reload commands and modules',
+          '`/dev sync` — Force register global application commands',
+          '`/dev maintenance` — Toggle global maintenance mode',
+          '`/dev blacklist <add|remove>` — Manage blocked users/guilds'
         ]
       };
     }
 
-    const currentCat = categories[category] || categories.music;
+    let mainContent = '';
+    if (isHome) {
+      mainContent = [
+        '### ✦ Kira Music • Command Center',
+        'Lossless audio streaming powered by **Kazagumo & Lavalink v4**.',
+        '',
+        '**Select a category to browse:**',
+        '• 🎵 **Music & Playback** `[17]` — Streaming, smart search, controls & volume',
+        '• 🎛️ **Queue & Audio** `[10]` — Queue operations, 6 DSP filters & lyrics',
+        '• 📚 **Library & Playlists** `[12]` — Custom playlists, favorites & profile',
+        '• ⚙️ **Server Settings** `[6]` — DJ roles, persistent player, prefix & 24/7 mode',
+        '• ⭐ **Premium & Utility** `[6]` — Tier perks, latency ping, system stats & invite',
+        isDev ? '• 🛠️ **Developer Tools** `[9]` — Nodes, player controls, maintenance & cache' : ''
+      ].filter(Boolean).join('\n');
+    } else {
+      const currentCat = categories[category] || categories.music;
+      mainContent = [
+        `### ${currentCat.title}`,
+        `*${currentCat.desc}*`,
+        '',
+        currentCat.commands.join('\n')
+      ].join('\n');
+    }
 
     const select = new StringSelectBuilder()
       .setCustomId('help:category')
-      .setPlaceholder('Choose a Command Category')
-      .addOption('Music & Playback', 'music', 'Play, pause, skip, seek, and loop')
-      .addOption('Queue & Audio', 'queue', 'Queue management, filters, and lyrics')
-      .addOption('Library & Playlists', 'library', 'Favorites, history, and playlists')
-      .addOption('Server Settings', 'settings', 'Prefix, DJ role, and channel rules')
-      .addOption('Premium & Utility', 'premium', 'Perks, stats, ping, and info');
+      .setPlaceholder(isHome ? 'Choose a Category...' : `Category: ${categories[category]?.name || 'Overview'}`)
+      .addOption('🏠 Home / Overview', 'home', 'Return to main command dashboard', isHome)
+      .addOption('🎵 Music & Playback', 'music', 'Play, pause, skip, seek, and loop', category === 'music')
+      .addOption('🎛️ Queue & Audio', 'queue', 'Queue management, filters, and lyrics', category === 'queue')
+      .addOption('📚 Library & Playlists', 'library', 'Favorites, history, and playlists', category === 'library')
+      .addOption('⚙️ Server Settings', 'settings', 'Prefix, DJ role, and channel rules', category === 'settings')
+      .addOption('⭐ Premium & Utility', 'premium', 'Perks, stats, ping, and bot info', category === 'premium');
 
     if (isDev) {
-      select.addOption('Developer Commands', 'dev', 'Owner maintenance and node tools');
+      select.addOption('🛠️ Developer Tools', 'dev', 'Owner maintenance and node tools', category === 'dev');
     }
+
+    const buttonsRow = new ActionRowBuilder();
+    if (!isHome) {
+      buttonsRow.addComponents(
+        new ButtonBuilder()
+          .setCustomId('help:cat:home')
+          .setLabel('Home')
+          .setStyle(BUTTON_STYLES.PRIMARY)
+      );
+    }
+    buttonsRow.addComponents(
+      new ButtonBuilder()
+        .setCustomId('help:cat:music')
+        .setLabel('Music')
+        .setStyle(category === 'music' ? BUTTON_STYLES.PRIMARY : BUTTON_STYLES.SECONDARY),
+      new ButtonBuilder()
+        .setCustomId('help:cat:queue')
+        .setLabel('Queue')
+        .setStyle(category === 'queue' ? BUTTON_STYLES.PRIMARY : BUTTON_STYLES.SECONDARY),
+      new ButtonBuilder()
+        .setCustomId('help:cat:library')
+        .setLabel('Library')
+        .setStyle(category === 'library' ? BUTTON_STYLES.PRIMARY : BUTTON_STYLES.SECONDARY),
+      new ButtonBuilder()
+        .setCustomId('help:cat:premium')
+        .setLabel('Premium')
+        .setStyle(category === 'premium' ? BUTTON_STYLES.PRIMARY : BUTTON_STYLES.SECONDARY)
+    );
 
     const container = new ContainerBuilder(null)
       .addComponents(
-        new TextDisplayBuilder(`### ${currentCat.title}\n\n${currentCat.commands.join('\n')}`),
+        new TextDisplayBuilder(mainContent),
         new SeparatorBuilder(true, 1),
-        new ActionRowBuilder().addComponents(select)
+        new ActionRowBuilder().addComponents(select),
+        buttonsRow
       );
 
     return createV2Payload(container);

@@ -3,14 +3,14 @@ const permissionManager = require('../../managers/PermissionManager');
 const uiTemplates = require('../../ui/templates');
 
 module.exports = {
-  name: 'help',
+  name: 'helpop',
   description: 'Interactive Discord Components V2 command browser and help dashboard',
-  aliases: ['helpop', 'commands', 'h', 'helpme'],
+  aliases: ['help', 'commands', 'h', 'helpme'],
   argNames: ['category'],
   cooldown: 2,
 
   data: new SlashCommandBuilder()
-    .setName('help')
+    .setName('helpop')
     .setDescription('Interactive command browser and help dashboard')
     .addStringOption(opt =>
       opt

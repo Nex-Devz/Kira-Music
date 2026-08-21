@@ -193,9 +193,10 @@ This manual provides complete documentation for all 41 commands available in Kir
 
 ## 🛠️ Utility & Developer Commands
 
-### `/help`
-- **Description:** Interactive Components V2 command browser categorized by domain.
-- **Options:** `category` (String, Optional).
+### `/help` / `/helpop`
+- **Description:** Interactive Discord Components V2 command browser and minimal dashboard.
+- **Aliases:** `helpop`, `commands`, `h`, `helpme`
+- **Options:** `category` (`home`, `music`, `queue`, `library`, `settings`, `premium`, `dev`) (String, Optional).
 
 ### `/ping`
 - **Description:** Measure Discord Gateway and Lavalink node latency.

@@ -146,7 +146,7 @@ class PlayerButtonHandler {
 
       case 'help':
         await interaction.reply(
-          uiTemplates.buildHelpMenu('music', permissionManager.isDeveloper(interaction.user.id))
+          uiTemplates.buildHelpMenu('home', permissionManager.isDeveloper(interaction.user.id))
         );
         break;
 
