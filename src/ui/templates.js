@@ -2,6 +2,9 @@ const {
   ContainerBuilder,
   TextDisplayBuilder,
   SeparatorBuilder,
+  SectionBuilder,
+  ThumbnailBuilder,
+  MediaGalleryBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   StringSelectBuilder,
@@ -35,75 +38,87 @@ class UITemplates {
     const author = current.author || current.info?.author || 'Unknown Artist';
     const duration = current.duration || current.info?.duration || current.length || 0;
     const position = player.position || 0;
-    const artworkUrl = current.artworkUrl || current.info?.artworkUrl || current.thumbnail || null;
+    const uri = current.uri || current.info?.uri || null;
     const requester = current.requester?.username || current.requesterTag || 'User';
     const paused = Boolean(player.paused);
     const loop = player.loop || player.queue?.repeatMode || 'off';
     const autoplay = Boolean(player.autoplay || player.isAutoplayEnabled?.());
-    const filters = player.activeFilters || [];
-
-    const canvasBuffer = await playerCanvas.render({
-      title,
-      author,
-      duration,
-      position,
-      artworkUrl,
-      requester,
-      paused,
-      loop,
-      autoplay,
-      filters
-    });
-
     const queueSize = player.queue?.tracksList?.length || player.queue?.size || 0;
     const volume = player.volume || 80;
 
-    const container = new ContainerBuilder(null)
-      .addComponents(
-        new TextDisplayBuilder(
-          `**${title}**\n${author} • Volume: \`${volume}%\` • Queue: \`${queueSize} tracks\``
-        ),
-        new SeparatorBuilder(true, 1),
-        new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('player:previous')
-            .setLabel('Previous')
-            .setStyle(BUTTON_STYLES.SECONDARY),
-          new ButtonBuilder()
-            .setCustomId(paused ? 'player:resume' : 'player:pause')
-            .setLabel(paused ? 'Resume' : 'Pause')
-            .setStyle(paused ? BUTTON_STYLES.SUCCESS : BUTTON_STYLES.PRIMARY),
-          new ButtonBuilder()
-            .setCustomId('player:skip')
-            .setLabel('Skip')
-            .setStyle(BUTTON_STYLES.SECONDARY),
-          new ButtonBuilder()
-            .setCustomId('player:stop')
-            .setLabel('Stop')
-            .setStyle(BUTTON_STYLES.DANGER)
-        ),
-        new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('player:queue')
-            .setLabel('Queue')
-            .setStyle(BUTTON_STYLES.SECONDARY),
-          new ButtonBuilder()
-            .setCustomId('player:lyrics')
-            .setLabel('Lyrics')
-            .setStyle(BUTTON_STYLES.SECONDARY),
-          new ButtonBuilder()
-            .setCustomId('player:favorite')
-            .setLabel('Favorite')
-            .setStyle(BUTTON_STYLES.SECONDARY),
-          new ButtonBuilder()
-            .setCustomId('player:more')
-            .setLabel('Audio Controls')
-            .setStyle(BUTTON_STYLES.SECONDARY)
-        )
-      );
+    // Resolve artwork thumbnail
+    let artworkUrl = current.artworkUrl || current.info?.artworkUrl || current.thumbnail || null;
+    if (!artworkUrl) {
+      const identifier = current.identifier || current.info?.identifier;
+      const source = current.sourceName || current.info?.sourceName || '';
+      if (identifier && (source === 'youtube' || (uri && (uri.includes('youtube') || uri.includes('youtu.be'))))) {
+        artworkUrl = `https://img.youtube.com/vi/${identifier}/mqdefault.jpg`;
+      }
+    }
+
+    // Clean up title for elegant presentation
+    const cleanTitle = title.length > 70 ? `${title.substring(0, 67)}...` : title;
+    const titleHeader = uri ? `### [${cleanTitle}](${uri})` : `### ${cleanTitle}`;
+    const durationStr = this.formatDuration(duration);
+    const positionStr = this.formatDuration(position);
+
+    // Section with cover artwork accessory
+    const section = new SectionBuilder();
+    const trackInfoText =
+      `${titleHeader}\n` +
+      `**Artist:** ${author}\n\n` +
+      `• **Time:** \`${positionStr} / ${durationStr}\` • **Volume:** \`${volume}%\`\n` +
+      `• **Queue:** \`${queueSize} tracks\` • **Loop:** \`${loop}\`\n` +
+      `• **Requester:** ${requester}`;
+
+    section.addText(trackInfoText);
+
+    if (artworkUrl) {
+      section.setAccessory(new ThumbnailBuilder(artworkUrl));
+    }
+
+    const container = new ContainerBuilder(null).addComponents(
+      section,
+      new SeparatorBuilder(true, 1),
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('player:previous')
+          .setLabel('Previous')
+          .setStyle(BUTTON_STYLES.SECONDARY),
+        new ButtonBuilder()
+          .setCustomId(paused ? 'player:resume' : 'player:pause')
+          .setLabel(paused ? 'Resume' : 'Pause')
+          .setStyle(paused ? BUTTON_STYLES.SUCCESS : BUTTON_STYLES.PRIMARY),
+        new ButtonBuilder()
+          .setCustomId('player:skip')
+          .setLabel('Skip')
+          .setStyle(BUTTON_STYLES.SECONDARY),
+        new ButtonBuilder()
+          .setCustomId('player:stop')
+          .setLabel('Stop')
+          .setStyle(BUTTON_STYLES.DANGER)
+      ),
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('player:queue')
+          .setLabel('Queue')
+          .setStyle(BUTTON_STYLES.SECONDARY),
+        new ButtonBuilder()
+          .setCustomId('player:lyrics')
+          .setLabel('Lyrics')
+          .setStyle(BUTTON_STYLES.SECONDARY),
+        new ButtonBuilder()
+          .setCustomId('player:favorite')
+          .setLabel('Favorite')
+          .setStyle(BUTTON_STYLES.SECONDARY),
+        new ButtonBuilder()
+          .setCustomId('player:more')
+          .setLabel('Audio Controls')
+          .setStyle(BUTTON_STYLES.SECONDARY)
+      )
+    );
 
     return createV2Payload(container, {
-      files: [{ attachment: canvasBuffer, name: 'player.png' }],
       ephemeral: options.ephemeral
     });
   }

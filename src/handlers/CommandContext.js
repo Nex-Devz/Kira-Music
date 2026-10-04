@@ -26,6 +26,7 @@ class CommandContext {
    * Defer reply (ephemeral supported)
    */
   async deferReply(options = {}) {
+    const text = options.text || 'Processing request...';
     if (this.isInteraction) {
       if (!this.source.deferred && !this.source.replied) {
         try {
@@ -42,9 +43,9 @@ class CommandContext {
         this.deferred = true;
       }
     } else {
-      // In prefix/message mode, show loading indicator
+      // In prefix/message mode, show loading indicator immediately
       try {
-        this.loadingMessage = await this.channel.send(uiTemplates.buildLoadingMessage('Processing request...'));
+        this.loadingMessage = await this.channel.send(uiTemplates.buildLoadingMessage(text));
         this.deferred = true;
       } catch (e) {}
     }
@@ -79,12 +80,12 @@ class CommandContext {
         }
       }
     } else {
-      if (this.loadingMessage && this.loadingMessage.deletable) {
+      this.replied = true;
+      if (this.loadingMessage && this.loadingMessage.editable) {
         try {
-          await this.loadingMessage.delete();
+          return await this.loadingMessage.edit(normalized);
         } catch (e) {}
       }
-      this.replied = true;
       return this.channel.send(normalized);
     }
   }

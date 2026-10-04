@@ -84,6 +84,68 @@ class SectionBuilder {
   }
 }
 
+class ThumbnailBuilder {
+  constructor(url = '') {
+    this.type = COMPONENT_TYPES.THUMBNAIL;
+    this.media = { url: String(url) };
+    this.description = null;
+    this.spoiler = false;
+  }
+
+  setUrl(url) {
+    this.media = { url: String(url) };
+    return this;
+  }
+
+  setDescription(desc) {
+    this.description = String(desc);
+    return this;
+  }
+
+  setSpoiler(spoiler = true) {
+    this.spoiler = Boolean(spoiler);
+    return this;
+  }
+
+  toJSON() {
+    const data = {
+      type: this.type,
+      media: this.media
+    };
+    if (this.description) data.description = this.description;
+    if (this.spoiler) data.spoiler = true;
+    return data;
+  }
+}
+
+class MediaGalleryBuilder {
+  constructor(items = []) {
+    this.type = COMPONENT_TYPES.MEDIA_GALLERY;
+    this.items = [];
+    if (Array.isArray(items)) {
+      items.forEach(i => this.addItem(i));
+    }
+  }
+
+  addItem(urlOrItem) {
+    if (typeof urlOrItem === 'string') {
+      this.items.push({ media: { url: urlOrItem } });
+    } else if (urlOrItem?.media) {
+      this.items.push(urlOrItem);
+    } else if (urlOrItem?.url) {
+      this.items.push({ media: { url: urlOrItem.url } });
+    }
+    return this;
+  }
+
+  toJSON() {
+    return {
+      type: this.type,
+      items: this.items
+    };
+  }
+}
+
 class ButtonBuilder {
   constructor() {
     this.type = COMPONENT_TYPES.BUTTON;
@@ -311,6 +373,8 @@ module.exports = {
   TextDisplayBuilder,
   SeparatorBuilder,
   SectionBuilder,
+  ThumbnailBuilder,
+  MediaGalleryBuilder,
   ButtonBuilder,
   StringSelectBuilder,
   ActionRowBuilder,

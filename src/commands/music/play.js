@@ -28,7 +28,7 @@ module.exports = {
       return context.replyError('Please provide a song title or link to play.');
     }
 
-    await context.deferReply();
+    await context.deferReply({ text: `Searching for **${query}**...` });
 
     const voiceChannel = context.voiceChannel;
     if (!voiceChannel) {
@@ -43,21 +43,21 @@ module.exports = {
 
       if (searchResult.loadType === 'playlist' || searchResult.type === 'PLAYLIST') {
         const tracks = searchResult.tracks;
-        await musicManager.play(context.guildId, voiceChannel.id, context.channel.id, tracks, context.user);
-        return context.reply(
+        await context.reply(
           uiTemplates.buildSuccessMessage(
             `Loaded **${tracks.length} tracks** from playlist **${searchResult.playlistInfo?.name || searchResult.name || 'Playlist'}**`
           )
         );
+        return await musicManager.play(context.guildId, voiceChannel.id, context.channel.id, tracks, context.user);
       }
 
       const track = searchResult.tracks[0];
-      await musicManager.play(context.guildId, voiceChannel.id, context.channel.id, track, context.user);
-      return context.reply(
+      await context.reply(
         uiTemplates.buildSuccessMessage(
           `Queued **${track.title || track.info?.title}** - ${track.author || track.info?.author}`
         )
       );
+      return await musicManager.play(context.guildId, voiceChannel.id, context.channel.id, track, context.user);
     } catch (err) {
       console.error('[Command: play] Error:', err);
       return context.replyError(`Failed to load track: ${err.message}`);
