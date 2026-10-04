@@ -15,10 +15,13 @@ module.exports = {
     const wsPing = context.client.ws.ping;
     let nodePings = 'No nodes connected';
 
-    if (musicManager.kumo?.nodes?.size) {
+    const nodes = musicManager.kumo?.nodes?.getAll ? musicManager.kumo.nodes.getAll() : (musicManager.kumo?.nodes?.values ? [...musicManager.kumo.nodes.values()] : []);
+
+    if (nodes && nodes.length > 0) {
       const pings = [];
-      for (const node of musicManager.kumo.nodes.values()) {
-        pings.push(`${node.name}: ${node.stats?.ping || '0'}ms`);
+      for (const node of nodes) {
+        const pingVal = node.stats?.ping ?? node.ping ?? '0';
+        pings.push(`${node.name || 'Node'}: ${pingVal}ms`);
       }
       nodePings = pings.join(', ');
     }

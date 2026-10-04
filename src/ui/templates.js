@@ -8,6 +8,7 @@ const {
   createV2Payload
 } = require('./componentsV2');
 const { BUTTON_STYLES } = require('../config/constants');
+const config = require('../config');
 const playerCanvas = require('../canvas/PlayerCanvas');
 const profileCanvas = require('../canvas/ProfileCanvas');
 
@@ -198,17 +199,18 @@ class UITemplates {
 
   // --- QUEUE VIEW ---
   buildQueueView(player, page = 1, pageSize = 10) {
-    const queueList = player.queue?.tracksList || [];
+    const queueList = player.queue?.tracksList || player.queue?.tracks || [];
     const current = player.currentTrack || player.queue?.current || null;
-    const totalTracks = queueList.length;
+    const upcomingList = (current && queueList.length > 0 && queueList[0] === current) ? queueList.slice(1) : queueList;
+    const totalTracks = upcomingList.length;
     const totalPages = Math.max(1, Math.ceil(totalTracks / pageSize));
     const currentPage = Math.min(Math.max(1, page), totalPages);
 
     const startIndex = (currentPage - 1) * pageSize;
-    const pageTracks = queueList.slice(startIndex, startIndex + pageSize);
+    const pageTracks = upcomingList.slice(startIndex, startIndex + pageSize);
 
     let totalDurationMs = (current?.duration || current?.length || 0);
-    queueList.forEach(t => { totalDurationMs += (t.duration || t.length || 0); });
+    upcomingList.forEach(t => { totalDurationMs += (t.duration || t.length || 0); });
 
     let currentSection = 'No track playing';
     if (current) {
@@ -567,6 +569,46 @@ class UITemplates {
     return createV2Payload(container);
   }
 
+  // --- MENTION VIEW ---
+  buildMentionView(client, guild, prefix) {
+    const botName = client.user?.username || 'Kira Music';
+    const ping = client.ws.ping || 0;
+
+    const content = [
+      `### ${botName}`,
+      `Hello! I am **${botName}**, a high-fidelity music streaming bot for Discord.`,
+      '',
+      `• **Server Prefix:** \`${prefix}\``,
+      `• **Slash Commands:** Available globally (\`/play\`, \`/help\`, \`/queue\`)`,
+      `• **Gateway Latency:** \`${ping}ms\``,
+      '',
+      `Type \`/help\` or \`${prefix}help\` to browse all available commands.`,
+      `Type \`/play <song>\` or \`${prefix}play <song>\` to start listening.`
+    ].join('\n');
+
+    const container = new ContainerBuilder(null)
+      .addComponents(
+        new TextDisplayBuilder(content),
+        new SeparatorBuilder(true, 1),
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('help:cat:home')
+            .setLabel('Help Menu')
+            .setStyle(BUTTON_STYLES.PRIMARY),
+          new ButtonBuilder()
+            .setStyle(BUTTON_STYLES.LINK)
+            .setLabel('Invite Bot')
+            .setURL(`https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot%20applications.commands`),
+          new ButtonBuilder()
+            .setStyle(BUTTON_STYLES.LINK)
+            .setLabel('Support Server')
+            .setURL('https://discord.gg/example')
+        )
+      );
+
+    return createV2Payload(container);
+  }
+
   // --- HELP COMMAND ---
   buildHelpMenu(category = 'home', isDev = false) {
     const isHome = !category || category === 'home' || category === 'overview';
@@ -574,8 +616,7 @@ class UITemplates {
     const categories = {
       music: {
         name: 'Music & Playback',
-        icon: '🎵',
-        title: '🎵 Music & Playback Commands',
+        title: 'Music & Playback Commands',
         desc: 'Streaming, smart search, volume & playback controls',
         count: 17,
         commands: [
@@ -597,8 +638,7 @@ class UITemplates {
       },
       queue: {
         name: 'Queue & Audio',
-        icon: '🎛️',
-        title: '🎛️ Queue & Audio Management',
+        title: 'Queue & Audio Management',
         desc: 'Queue ordering, 6 DSP audio filters & lyrics',
         count: 10,
         commands: [
@@ -616,8 +656,7 @@ class UITemplates {
       },
       library: {
         name: 'Library & Playlists',
-        icon: '📚',
-        title: '📚 Personal Library & Playlists',
+        title: 'Personal Library & Playlists',
         desc: 'Custom playlists, favorites & listening history',
         count: 12,
         commands: [
@@ -637,8 +676,7 @@ class UITemplates {
       },
       settings: {
         name: 'Server Settings',
-        icon: '⚙️',
-        title: '⚙️ Server Settings & Configuration',
+        title: 'Server Settings & Configuration',
         desc: 'DJ roles, persistent player, prefix & channel rules',
         count: 6,
         commands: [
@@ -652,8 +690,7 @@ class UITemplates {
       },
       premium: {
         name: 'Premium & Utility',
-        icon: '⭐',
-        title: '⭐ Premium & Utility Commands',
+        title: 'Premium & Utility Commands',
         desc: 'Tier perks, latency ping, uptime & invite links',
         count: 6,
         commands: [
@@ -670,8 +707,7 @@ class UITemplates {
     if (isDev) {
       categories.dev = {
         name: 'Developer Tools',
-        icon: '🛠️',
-        title: '🛠️ Developer / Owner Suite',
+        title: 'Developer / Owner Suite',
         desc: 'Lavalink nodes, player controls & system maintenance',
         count: 9,
         commands: [
@@ -691,16 +727,16 @@ class UITemplates {
     let mainContent = '';
     if (isHome) {
       mainContent = [
-        '### ✦ Kira Music • Command Center',
-        'Lossless audio streaming powered by **Kazagumo & Lavalink v4**.',
+        '### Kira Music • Command Center',
+        'Lossless audio streaming powered by **YuKumo & Lavalink v4**.',
         '',
         '**Select a category to browse:**',
-        '• 🎵 **Music & Playback** `[17]` — Streaming, smart search, controls & volume',
-        '• 🎛️ **Queue & Audio** `[10]` — Queue operations, 6 DSP filters & lyrics',
-        '• 📚 **Library & Playlists** `[12]` — Custom playlists, favorites & profile',
-        '• ⚙️ **Server Settings** `[6]` — DJ roles, persistent player, prefix & 24/7 mode',
-        '• ⭐ **Premium & Utility** `[6]` — Tier perks, latency ping, system stats & invite',
-        isDev ? '• 🛠️ **Developer Tools** `[9]` — Nodes, player controls, maintenance & cache' : ''
+        '• **Music & Playback** `[17]` — Streaming, smart search, controls & volume',
+        '• **Queue & Audio** `[10]` — Queue operations, 6 DSP filters & lyrics',
+        '• **Library & Playlists** `[12]` — Custom playlists, favorites & profile',
+        '• **Server Settings** `[6]` — DJ roles, persistent player, prefix & 24/7 mode',
+        '• **Premium & Utility** `[6]` — Tier perks, latency ping, system stats & invite',
+        isDev ? '• **Developer Tools** `[9]` — Nodes, player controls, maintenance & cache' : ''
       ].filter(Boolean).join('\n');
     } else {
       const currentCat = categories[category] || categories.music;
@@ -715,15 +751,15 @@ class UITemplates {
     const select = new StringSelectBuilder()
       .setCustomId('help:category')
       .setPlaceholder(isHome ? 'Choose a Category...' : `Category: ${categories[category]?.name || 'Overview'}`)
-      .addOption('🏠 Home / Overview', 'home', 'Return to main command dashboard', isHome)
-      .addOption('🎵 Music & Playback', 'music', 'Play, pause, skip, seek, and loop', category === 'music')
-      .addOption('🎛️ Queue & Audio', 'queue', 'Queue management, filters, and lyrics', category === 'queue')
-      .addOption('📚 Library & Playlists', 'library', 'Favorites, history, and playlists', category === 'library')
-      .addOption('⚙️ Server Settings', 'settings', 'Prefix, DJ role, and channel rules', category === 'settings')
-      .addOption('⭐ Premium & Utility', 'premium', 'Perks, stats, ping, and bot info', category === 'premium');
+      .addOption('Home / Overview', 'home', 'Return to main command dashboard', isHome)
+      .addOption('Music & Playback', 'music', 'Play, pause, skip, seek, and loop', category === 'music')
+      .addOption('Queue & Audio', 'queue', 'Queue management, filters, and lyrics', category === 'queue')
+      .addOption('Library & Playlists', 'library', 'Favorites, history, and playlists', category === 'library')
+      .addOption('Server Settings', 'settings', 'Prefix, DJ role, and channel rules', category === 'settings')
+      .addOption('Premium & Utility', 'premium', 'Perks, stats, ping, and bot info', category === 'premium');
 
     if (isDev) {
-      select.addOption('🛠️ Developer Tools', 'dev', 'Owner maintenance and node tools', category === 'dev');
+      select.addOption('Developer Tools', 'dev', 'Owner maintenance and node tools', category === 'dev');
     }
 
     const buttonsRow = new ActionRowBuilder();
@@ -838,6 +874,41 @@ class UITemplates {
             .setStyle(BUTTON_STYLES.SECONDARY)
         )
       );
+    return createV2Payload(container);
+  }
+
+  // --- MENTION VIEW ---
+  buildMentionView(client, guild, prefix) {
+    const botName = client?.user?.username || 'Kira';
+    const botId = client?.user?.id;
+    const inviteUrl = config.client?.botInvite || `https://discord.com/oauth2/authorize?client_id=${botId}&permissions=8&scope=bot%20applications.commands`;
+    const supportUrl = config.client?.supportInvite || 'https://discord.gg/example';
+
+    const actionRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('Invite')
+        .setUrl(inviteUrl),
+      new ButtonBuilder()
+        .setLabel('Support')
+        .setUrl(supportUrl),
+      new ButtonBuilder()
+        .setCustomId('help:category:general')
+        .setLabel('Commands')
+        .setStyle(BUTTON_STYLES.SECONDARY)
+    );
+
+    const container = new ContainerBuilder(null).addComponents(
+      new TextDisplayBuilder(
+        `### ${botName}\n` +
+        `Hey there! My prefix in **${guild?.name || 'this server'}** is \`${prefix}\`\n\n` +
+        `• Type \`${prefix}help\` or \`/help\` to view all commands\n` +
+        `• Type \`${prefix}play <song>\` or \`/play <song>\` to start playing music\n` +
+        `• Join our support server if you need any assistance`
+      ),
+      new SeparatorBuilder(true, 1),
+      actionRow
+    );
+
     return createV2Payload(container);
   }
 }

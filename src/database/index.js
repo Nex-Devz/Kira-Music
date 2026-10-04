@@ -15,6 +15,7 @@ class DatabaseManager {
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
     this.initSchema();
+    console.log('Connected to the SQLite database.');
   }
 
   initSchema() {

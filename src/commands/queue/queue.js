@@ -84,47 +84,66 @@ module.exports = {
         const track = res.tracks[0];
         track.requester = context.user;
         player.queue.enqueue(track);
-        return context.replySuccess(`Added **${track.title}** to the queue at position #${player.queue.tracksList.length}.`);
+        const isCurrentInTracks = Boolean(player.currentTrack && player.queue.tracks[0] === player.currentTrack);
+        const upcomingCount = isCurrentInTracks ? Math.max(0, player.queue.tracks.length - 1) : player.queue.tracks.length;
+        return context.replySuccess(`Added **${track.title}** to the queue at position #${upcomingCount}.`);
       }
 
       case 'remove': {
+        const isCurrentInTracks = Boolean(player.currentTrack && player.queue.tracks[0] === player.currentTrack);
+        const upcomingCount = isCurrentInTracks ? Math.max(0, player.queue.tracks.length - 1) : player.queue.tracks.length;
         const pos = context.getInteger('position') || parseInt(context.getString('arg1'), 10);
-        if (!pos || pos < 1 || pos > player.queue.tracksList.length) {
-          return context.replyError(`Invalid position. Valid range: 1 to ${player.queue.tracksList.length}.`);
+        if (!pos || pos < 1 || pos > upcomingCount) {
+          return context.replyError(`Invalid position. Valid range: 1 to ${upcomingCount}.`);
         }
-        const removed = player.queue.tracksList.splice(pos - 1, 1)[0];
+        const targetIdx = isCurrentInTracks ? pos : (pos - 1);
+        const removed = player.queue.remove(targetIdx, 1)[0];
         return context.replySuccess(`Removed **${removed?.title || 'track'}** from position #${pos}.`);
       }
 
       case 'move': {
+        const isCurrentInTracks = Boolean(player.currentTrack && player.queue.tracks[0] === player.currentTrack);
+        const upcomingCount = isCurrentInTracks ? Math.max(0, player.queue.tracks.length - 1) : player.queue.tracks.length;
         const from = context.getInteger('from') || parseInt(context.getString('arg1'), 10);
         const to = context.getInteger('to') || parseInt(context.getString('arg2'), 10);
-        const len = player.queue.tracksList.length;
-        if (!from || !to || from < 1 || to < 1 || from > len || to > len) {
-          return context.replyError(`Invalid positions. Range must be between 1 and ${len}.`);
+        if (!from || !to || from < 1 || to < 1 || from > upcomingCount || to > upcomingCount) {
+          return context.replyError(`Invalid positions. Range must be between 1 and ${upcomingCount}.`);
         }
-        const [moved] = player.queue.tracksList.splice(from - 1, 1);
-        player.queue.tracksList.splice(to - 1, 0, moved);
-        return context.replySuccess(`Moved **${moved.title}** from #${from} to #${to}.`);
+        const targetFrom = isCurrentInTracks ? from : (from - 1);
+        const targetTo = isCurrentInTracks ? to : (to - 1);
+        const moved = player.queue.tracks[targetFrom];
+        player.queue.move(targetFrom, targetTo);
+        return context.replySuccess(`Moved **${moved?.title || 'track'}** from #${from} to #${to}.`);
       }
 
       case 'clear': {
-        player.queue.clear();
+        if (typeof player.queue.clearExceptCurrent === 'function' && player.currentTrack) {
+          player.queue.clearExceptCurrent();
+        } else {
+          player.queue.clear();
+        }
         return context.replySuccess('Cleared all tracks from the queue.');
       }
 
       case 'shuffle': {
+        const isCurrentInTracks = Boolean(player.currentTrack && player.queue.tracks[0] === player.currentTrack);
+        const upcomingCount = isCurrentInTracks ? Math.max(0, player.queue.tracks.length - 1) : player.queue.tracks.length;
+        if (upcomingCount < 2) {
+          return context.replyError('Need at least 2 upcoming tracks in the queue to shuffle.');
+        }
         player.queue.shuffle();
-        return context.replySuccess(`Shuffled **${player.queue.tracksList.length} tracks** in the queue.`);
+        return context.replySuccess(`Shuffled **${upcomingCount} tracks** in the queue.`);
       }
 
       case 'jump': {
+        const isCurrentInTracks = Boolean(player.currentTrack && player.queue.tracks[0] === player.currentTrack);
+        const upcomingCount = isCurrentInTracks ? Math.max(0, player.queue.tracks.length - 1) : player.queue.tracks.length;
         const jumpPos = context.getInteger('position') || parseInt(context.getString('arg1'), 10);
-        if (!jumpPos || jumpPos < 1 || jumpPos > player.queue.tracksList.length) {
-          return context.replyError(`Invalid position. Range must be between 1 and ${player.queue.tracksList.length}.`);
+        if (!jumpPos || jumpPos < 1 || jumpPos > upcomingCount) {
+          return context.replyError(`Invalid position. Range must be between 1 and ${upcomingCount}.`);
         }
-        // Remove tracks before target position
-        player.queue.tracksList.splice(0, jumpPos - 1);
+        const targetJump = isCurrentInTracks ? jumpPos : (jumpPos - 1);
+        player.queue.skipTo(targetJump);
         await musicManager.skip(context.guildId);
         return context.replySuccess(`Jumped to track at position #${jumpPos}.`);
       }

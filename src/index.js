@@ -34,18 +34,20 @@ for (const file of eventFiles) {
   }
 }
 
+const logger = require('./utils/logger');
+
 // Global Process Exception Handlers
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('[Process] Unhandled Promise Rejection:', reason);
+  logger.error('Unhandled Promise Rejection:', reason);
 });
 
 process.on('uncaughtException', (err) => {
-  console.error('[Process] Uncaught Exception:', err);
+  logger.error('Uncaught Exception:', err);
 });
 
 // Graceful Shutdown
 const shutdown = async () => {
-  console.log('[Kira] Shutting down gracefully...');
+  logger.log('Shutting down gracefully...');
   try {
     if (musicManager.kumo) {
       musicManager.kumo.destroy();
@@ -62,10 +64,10 @@ process.on('SIGTERM', shutdown);
 // Start bot if token exists
 if (config.client.token) {
   client.login(config.client.token).catch((err) => {
-    console.error('[Kira] Failed to login to Discord:', err.message);
+    logger.error('Failed to login to Discord:', err.message);
   });
 } else {
-  console.warn('[Kira] No DISCORD_TOKEN provided in environment. Please set DISCORD_TOKEN in .env to connect.');
+  logger.warn('No DISCORD_TOKEN provided in environment. Please set DISCORD_TOKEN in .env to connect.');
 }
 
 module.exports = { client, commandHandler, musicManager, dbManager };

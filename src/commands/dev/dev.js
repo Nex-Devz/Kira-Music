@@ -109,17 +109,20 @@ module.exports = {
 
     switch (subcommand) {
       case 'nodes': {
-        if (!musicManager.kumo?.nodes?.size) {
+        const nodes = musicManager.kumo?.nodes?.getAll ? musicManager.kumo.nodes.getAll() : (musicManager.kumo?.nodes?.values ? [...musicManager.kumo.nodes.values()] : []);
+        if (!nodes || nodes.length === 0) {
           return context.replyError('No Lavalink nodes are currently registered.');
         }
 
         const nodeReports = [];
-        for (const node of musicManager.kumo.nodes.values()) {
+        for (const node of nodes) {
           const stats = node.stats || {};
           const cpu = stats.cpu ? `${(stats.cpu.lavalinkLoad * 100).toFixed(1)}%` : 'N/A';
           const mem = stats.memory ? `${Math.round(stats.memory.used / 1024 / 1024)}MB / ${Math.round(stats.memory.allocated / 1024 / 1024)}MB` : 'N/A';
           const players = stats.players || 0;
           const uptime = stats.uptime ? uiTemplates.formatDuration(stats.uptime) : 'N/A';
+          const host = node.config?.host || node.options?.host || 'localhost';
+          const port = node.config?.port || node.options?.port || '2333';
 
           nodeReports.push(
             `**Node: ${node.name}**\n` +
@@ -128,7 +131,7 @@ module.exports = {
             `• CPU Load: \`${cpu}\`\n` +
             `• Memory: \`${mem}\`\n` +
             `• Uptime: \`${uptime}\`\n` +
-            `• Host: \`${node.options.host}:${node.options.port}\``
+            `• Host: \`${host}:${port}\``
           );
         }
 
@@ -164,7 +167,7 @@ module.exports = {
           await musicManager.stop(guildId);
           return context.replySuccess(`Stopped playback in guild \`${guildId}\`.`);
         } else if (action === 'destroy') {
-          musicManager.kumo.players.destroy(guildId);
+          await musicManager.kumo.destroyPlayer(guildId);
           return context.replySuccess(`Destroyed player in guild \`${guildId}\`.`);
         }
         break;

@@ -7,6 +7,8 @@ const errorHandler = require('./ErrorHandler');
 const guildRepo = require('../database/repositories/GuildRepository');
 const premiumManager = require('../managers/PremiumManager');
 const config = require('../config');
+const logger = require('../utils/logger');
+const uiTemplates = require('../ui/templates');
 
 class CommandHandler {
   constructor() {
@@ -49,18 +51,16 @@ class CommandHandler {
                   typeof command.data.toJSON === 'function' ? command.data.toJSON() : command.data
                 );
               }
-
-              console.log(`[CommandHandler] Loaded command: ${command.name}`);
             }
           } catch (err) {
-            console.error(`[CommandHandler] Failed to load command at "${fullPath}":`, err);
+            logger.error(`Failed to load command at "${fullPath}":`, err);
           }
         }
       }
     };
 
     loadDir(commandsDir);
-    console.log(`[CommandHandler] Successfully loaded ${this.commands.size} commands.`);
+    logger.cmd('Successfully Loaded All Slash Commands');
   }
 
   /**
@@ -71,14 +71,12 @@ class CommandHandler {
 
     const rest = new REST({ version: '10' }).setToken(config.client.token);
     try {
-      console.log(`[CommandHandler] Registering ${this.slashCommandData.length} application (/) commands...`);
       await rest.put(
         Routes.applicationCommands(client.user.id),
         { body: this.slashCommandData }
       );
-      console.log('[CommandHandler] Successfully registered application (/) commands globally.');
     } catch (err) {
-      console.error('[CommandHandler] Failed to register slash commands:', err);
+      logger.error('Failed to register slash commands globally:', err);
     }
   }
 
@@ -111,7 +109,7 @@ class CommandHandler {
   }
 
   /**
-   * Handle Message command (Prefix or Premium No-Prefix)
+   * Handle Message command (Prefix, Mention, or Premium No-Prefix)
    */
   async handleMessage(message) {
     if (message.author.bot || !message.guild) return;
@@ -119,20 +117,45 @@ class CommandHandler {
     const content = message.content.trim();
     if (!content) return;
 
+    const botId = message.client.user?.id;
     const guildData = guildRepo.get(message.guild.id);
     const prefix = guildData?.prefix || config.defaults.PREFIX;
+
+    // Direct mention reply (when bot is mentioned alone)
+    if (botId) {
+      const mentionSoloRegex = new RegExp(`^<@!?${botId}>(?:\\s+)?$`);
+      if (mentionSoloRegex.test(content)) {
+        try {
+          const payload = uiTemplates.buildMentionView(message.client, message.guild, prefix);
+          return await message.reply(payload);
+        } catch (e) {
+          try {
+            const payload = uiTemplates.buildMentionView(message.client, message.guild, prefix);
+            return await message.channel.send(payload);
+          } catch (err) {}
+        }
+        return;
+      }
+    }
 
     let commandName = null;
     let rawArgs = [];
     let isNoPrefix = false;
 
-    // 1. Check Configured Prefix
-    if (content.startsWith(prefix)) {
+    // 1. Check Mention as Prefix (e.g. @Bot play song)
+    const mentionPrefixRegex = botId ? new RegExp(`^<@!?${botId}>\\s+`) : null;
+    if (mentionPrefixRegex && mentionPrefixRegex.test(content)) {
+      const remaining = content.replace(mentionPrefixRegex, '').trim();
+      const parts = remaining.split(/ +/);
+      commandName = parts[0]?.toLowerCase();
+      rawArgs = parts.slice(1);
+    } else if (content.startsWith(prefix)) {
+      // 2. Check Configured Prefix
       const parts = content.slice(prefix.length).trim().split(/ +/);
       commandName = parts[0]?.toLowerCase();
       rawArgs = parts.slice(1);
     } else {
-      // 2. Check Premium No-Prefix Entitlement
+      // 3. Check Premium No-Prefix Entitlement
       const hasNoPrefix = premiumManager.hasNoPrefix(message.author.id, message.guild.id);
       if (hasNoPrefix) {
         const parts = content.split(/ +/);

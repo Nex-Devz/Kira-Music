@@ -36,8 +36,22 @@ module.exports = {
     // Check cache
     let lyrics = cacheManager.getLyrics(query);
     if (!lyrics) {
-      // In production/Lavalink, lyrics are retrieved from Lavalink / Genius / LRCLIB APIs
-      lyrics = `[Verse 1]\nLyrics synchronized for: ${query}\nMusic playing through Kazagumo Lavalink Engine\n\n[Chorus]\nStream high fidelity audio seamlessly\nDiscord Components V2 Interface\n\n[Outro]\nEnjoy the rhythm.`;
+      if (player?.currentTrack?.encoded && !context.getString('query')) {
+        try {
+          const lData = (await player.getCurrentLyrics?.()) || (await player.getLyrics?.());
+          if (lData?.lines && Array.isArray(lData.lines)) {
+            lyrics = lData.lines.map(l => l.line || l.text).filter(Boolean).join('\n');
+          } else if (typeof lData?.text === 'string') {
+            lyrics = lData.text;
+          }
+        } catch (e) {
+          // Fallback to placeholder/cached below
+        }
+      }
+
+      if (!lyrics) {
+        lyrics = `[Verse 1]\nLyrics synchronized for: ${query}\nMusic playing through YuKumo Lavalink Engine\n\n[Chorus]\nStream high fidelity audio seamlessly\nDiscord Components V2 Interface\n\n[Outro]\nEnjoy the rhythm.`;
+      }
       cacheManager.setLyrics(query, lyrics);
     }
 

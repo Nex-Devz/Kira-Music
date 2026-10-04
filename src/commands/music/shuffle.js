@@ -16,12 +16,15 @@ module.exports = {
 
   async execute(context) {
     const player = musicManager.getPlayer(context.guildId);
-    if (!player.queue || player.queue.tracksList?.length < 2) {
-      return context.replyError('Need at least 2 tracks in the queue to shuffle.');
+    const isCurrentInTracks = Boolean(player.currentTrack && player.queue.tracks[0] === player.currentTrack);
+    const upcomingCount = isCurrentInTracks ? Math.max(0, player.queue.tracks.length - 1) : (player.queue.tracks?.length || 0);
+
+    if (upcomingCount < 2) {
+      return context.replyError('Need at least 2 upcoming tracks in the queue to shuffle.');
     }
 
     player.queue.shuffle();
     await musicManager.updatePlayerMessage(player);
-    return context.replySuccess(`Shuffled **${player.queue.tracksList.length} tracks** in the queue.`);
+    return context.replySuccess(`Shuffled **${upcomingCount} tracks** in the queue.`);
   }
 };

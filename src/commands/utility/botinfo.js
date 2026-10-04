@@ -19,7 +19,7 @@ module.exports = {
     const uptimeStr = uiTemplates.formatDuration(uptimeSec * 1000);
     const guildsCount = context.client.guilds.cache.size;
     const usersCount = context.client.users.cache.size;
-    const activePlayers = musicManager.kumo?.players?.size || 0;
+    const activePlayers = (typeof musicManager.kumo?.players?.size === 'function' ? musicManager.kumo.players.size() : musicManager.kumo?.players?.size) || musicManager.kumo?.getPlayers?.().length || 0;
 
     const info = [
       `• **Node.js:** \`${process.version}\``,
@@ -28,7 +28,7 @@ module.exports = {
       `• **Guilds:** \`${guildsCount}\``,
       `• **Cached Users:** \`${usersCount}\``,
       `• **Active Music Players:** \`${activePlayers}\``,
-      `• **Lavalink Engine:** \`Kazagumo v3 + Shoukaku v4\``,
+      `• **Lavalink Engine:** \`YuKumo (Lavalink v4)\``,
       `• **UI Framework:** \`Discord Components V2\``
     ].join('\n');
 

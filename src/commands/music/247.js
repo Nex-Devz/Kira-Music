@@ -22,7 +22,10 @@ module.exports = {
       return context.replyError('24/7 Mode requires **Gold or Diamond Premium Tier**. Use `/premium` to upgrade.');
     }
 
-    const player = musicManager.getPlayer(context.guildId) || musicManager.createPlayer(context.guildId, context.voiceChannel.id, context.channel.id);
+    let player = musicManager.getPlayer(context.guildId);
+    if (!player) {
+      player = await musicManager.createPlayer(context.guildId, context.voiceChannel.id, context.channel.id);
+    }
     const newState = !player.is247;
     player.is247 = newState;
 

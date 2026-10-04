@@ -68,7 +68,8 @@ class MiddlewarePipeline {
     // 7. Player Required Checks
     if (command.playerRequired) {
       const player = musicManager.getPlayer(guildId);
-      if (!player || (!player.currentTrack && player.queue?.isEmpty?.())) {
+      const isQueueEmpty = typeof player?.queue?.isEmpty === 'function' ? player.queue.isEmpty() : Boolean(player?.queue?.isEmpty ?? (player?.queue?.tracks?.length === 0));
+      if (!player || (!player.currentTrack && isQueueEmpty)) {
         return { allowed: false, reason: 'There is no music currently playing in this server.' };
       }
     }
