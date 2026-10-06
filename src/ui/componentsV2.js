@@ -118,6 +118,40 @@ class ThumbnailBuilder {
   }
 }
 
+class FileBuilder {
+  constructor(url = '') {
+    this.type = COMPONENT_TYPES.FILE;
+    this.file = { url: String(url) };
+    this.description = null;
+    this.spoiler = false;
+  }
+
+  setUrl(url) {
+    this.file = { url: String(url) };
+    return this;
+  }
+
+  setDescription(desc) {
+    this.description = String(desc);
+    return this;
+  }
+
+  setSpoiler(spoiler = true) {
+    this.spoiler = Boolean(spoiler);
+    return this;
+  }
+
+  toJSON() {
+    const data = {
+      type: this.type,
+      file: this.file
+    };
+    if (this.description) data.description = this.description;
+    if (this.spoiler) data.spoiler = true;
+    return data;
+  }
+}
+
 class MediaGalleryBuilder {
   constructor(items = []) {
     this.type = COMPONENT_TYPES.MEDIA_GALLERY;
@@ -363,7 +397,8 @@ function createV2Payload(containerOrComponents, options = {}) {
     components: componentsArray
   };
 
-  if (options.content) payload.content = options.content;
+  // NOTE: Components V2 messages must never carry `content` or `embeds` —
+  // Discord rejects the combination, so it is intentionally not forwarded.
   if (options.files) payload.files = options.files;
 
   return payload;
@@ -375,6 +410,7 @@ module.exports = {
   SectionBuilder,
   ThumbnailBuilder,
   MediaGalleryBuilder,
+  FileBuilder,
   ButtonBuilder,
   StringSelectBuilder,
   ActionRowBuilder,

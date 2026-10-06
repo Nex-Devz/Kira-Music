@@ -30,8 +30,10 @@ module.exports = {
     let targetMode = context.getString('mode');
 
     if (!targetMode) {
-      const cur = player.loop || 'off';
-      targetMode = cur === 'off' ? 'track' : cur === 'track' ? 'queue' : 'off';
+      // YuKumo reports 'none'; normalize so the first toggle is off -> track.
+      const cur = player.loop || player.queue?.repeatMode || 'off';
+      const normalized = cur === 'none' ? 'off' : cur;
+      targetMode = normalized === 'off' ? 'track' : normalized === 'track' ? 'queue' : 'off';
     }
 
     const setMode = musicManager.setLoop(context.guildId, targetMode);

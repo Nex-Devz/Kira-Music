@@ -45,8 +45,12 @@ class PermissionManager {
     }
 
     // Check if the member was the requester of the current track
-    if (player && player.currentTrack && player.currentTrack.requesterId === member.id) {
-      return true;
+    if (player && player.currentTrack) {
+      const req = player.currentTrack;
+      const requesterId = req.requesterId || req.requester?.id;
+      if (requesterId && requesterId === member.id) {
+        return true;
+      }
     }
 
     return false;

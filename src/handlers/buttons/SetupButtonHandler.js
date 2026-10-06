@@ -25,11 +25,17 @@ class SetupButtonHandler {
             reason: 'Kira Music Bot DJ Role'
           });
           guildRepo.update(guildId, { dj_role_id: role.id });
-        } catch (e) {}
+        } catch (e) {
+          return interaction.reply(
+            uiTemplates.buildErrorMessage('Could not create the DJ role. Check my role permissions and try again.')
+          );
+        }
       } else {
         guildRepo.update(guildId, { dj_role_id: null });
       }
       await interaction.update(uiTemplates.buildSetupWizard(3));
+    } else {
+      await interaction.deferUpdate();
     }
   }
 }

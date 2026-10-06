@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const musicManager = require('../../managers/MusicManager');
-const cacheManager = require('../../managers/CacheManager');
 const uiTemplates = require('../../ui/templates');
+const lyricsUtil = require('../../utils/lyrics');
 
 module.exports = {
   name: 'lyrics',
@@ -22,40 +22,39 @@ module.exports = {
 
   async execute(context) {
     const player = musicManager.getPlayer(context.guildId);
-    let query = context.getString('query');
+    const userQuery = context.getString('query');
+    let query = userQuery;
 
     if (!query) {
       if (!player || !player.currentTrack) {
         return context.replyError('No track currently playing. Please specify a song title.');
       }
-      query = `${player.currentTrack.title || player.currentTrack.info?.title} ${player.currentTrack.author || player.currentTrack.info?.author}`;
+      query = lyricsUtil.trackQuery(player.currentTrack);
     }
 
     await context.deferReply();
 
-    // Check cache
-    let lyrics = cacheManager.getLyrics(query);
-    if (!lyrics) {
-      if (player?.currentTrack?.encoded && !context.getString('query')) {
-        try {
-          const lData = (await player.getCurrentLyrics?.()) || (await player.getLyrics?.());
-          if (lData?.lines && Array.isArray(lData.lines)) {
-            lyrics = lData.lines.map(l => l.line || l.text).filter(Boolean).join('\n');
-          } else if (typeof lData?.text === 'string') {
-            lyrics = lData.text;
-          }
-        } catch (e) {
-          // Fallback to placeholder/cached below
-        }
-      }
+    // Node lyrics always describe the current track, so only ask for them
+    // when the query came from that track instead of a user-supplied title.
+    const lyrics = await lyricsUtil.resolveLyrics(player, query, !userQuery);
 
-      if (!lyrics) {
-        lyrics = `[Verse 1]\nLyrics synchronized for: ${query}\nMusic playing through YuKumo Lavalink Engine\n\n[Chorus]\nStream high fidelity audio seamlessly\nDiscord Components V2 Interface\n\n[Outro]\nEnjoy the rhythm.`;
-      }
-      cacheManager.setLyrics(query, lyrics);
+    if (!lyrics) {
+      return context.reply(
+        uiTemplates.buildLyricsView(
+          userQuery || player?.currentTrack?.title || query,
+          userQuery ? 'Unknown Artist' : player?.currentTrack?.author || '',
+          `No lyrics found for \`${query}\`. Try \`/lyrics <title> <artist>\` with a more specific query.`,
+          1
+        )
+      );
     }
 
-    const payload = uiTemplates.buildLyricsView(query, 'Original Artist', lyrics, 1);
+    const payload = uiTemplates.buildLyricsView(
+      userQuery || player?.currentTrack?.title || query,
+      userQuery ? '' : player?.currentTrack?.author || '',
+      lyrics,
+      1
+    );
     return context.reply(payload);
   }
 };

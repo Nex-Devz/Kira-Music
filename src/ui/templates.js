@@ -5,6 +5,7 @@ const {
   SectionBuilder,
   ThumbnailBuilder,
   MediaGalleryBuilder,
+  FileBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   StringSelectBuilder,
@@ -12,7 +13,6 @@ const {
 } = require('./componentsV2');
 const { BUTTON_STYLES } = require('../config/constants');
 const config = require('../config');
-const playerCanvas = require('../canvas/PlayerCanvas');
 const profileCanvas = require('../canvas/ProfileCanvas');
 
 class UITemplates {
@@ -25,6 +25,26 @@ class UITemplates {
     const pad = (n) => String(n).padStart(2, '0');
     if (hours > 0) return `${hours}:${pad(minutes)}:${pad(seconds)}`;
     return `${pad(minutes)}:${pad(seconds)}`;
+  }
+
+  // YuKumo reports repeatMode as 'none'; our commands and buttons use 'off'.
+  // Unify on 'off' so labels and the loop cycle button stay consistent.
+  normalizeLoop(loop) {
+    const value = String(loop || 'off').toLowerCase();
+    if (value === 'none') return 'off';
+    if (value === 'track' || value === 'queue') return value;
+    return 'off';
+  }
+
+  // Text progress bar — 20 cells, degrades to empty for live streams.
+  formatProgressBar(position, duration) {
+    const cells = 20;
+    if (!duration || duration <= 0 || isNaN(duration)) {
+      return `\`${'─'.repeat(cells)}\` LIVE`;
+    }
+    const ratio = Math.min(1, Math.max(0, position / duration));
+    const filled = Math.round(ratio * cells);
+    return `\`${'▬'.repeat(filled)}${'─'.repeat(cells - filled)}\` ${Math.floor(ratio * 100)}%`;
   }
 
   // --- PLAYER VIEW ---
@@ -41,7 +61,7 @@ class UITemplates {
     const uri = current.uri || current.info?.uri || null;
     const requester = current.requester?.username || current.requesterTag || 'User';
     const paused = Boolean(player.paused);
-    const loop = player.loop || player.queue?.repeatMode || 'off';
+    const loop = this.normalizeLoop(player.loop || player.queue?.repeatMode);
     const autoplay = Boolean(player.autoplay || player.isAutoplayEnabled?.());
     const queueSize = player.queue?.tracksList?.length || player.queue?.size || 0;
     const volume = player.volume || 80;
@@ -64,12 +84,14 @@ class UITemplates {
 
     // Section with cover artwork accessory
     const section = new SectionBuilder();
+    const stateLabel = paused ? ' **(Paused)**' : '';
     const trackInfoText =
-      `${titleHeader}\n` +
+      `${titleHeader}${stateLabel}\n` +
       `**Artist:** ${author}\n\n` +
-      `• **Time:** \`${positionStr} / ${durationStr}\` • **Volume:** \`${volume}%\`\n` +
-      `• **Queue:** \`${queueSize} tracks\` • **Loop:** \`${loop}\`\n` +
-      `• **Requester:** ${requester}`;
+      `${this.formatProgressBar(position, duration)}\n` +
+      `\`${positionStr} / ${durationStr}\`\n\n` +
+      `• **Volume:** \`${volume}%\` • **Loop:** \`${loop.toUpperCase()}\` • **Autoplay:** \`${autoplay ? 'ON' : 'OFF'}\`\n` +
+      `• **Queue:** \`${queueSize} tracks\` • **Requester:** ${requester}`;
 
     section.addText(trackInfoText);
 
@@ -146,7 +168,7 @@ class UITemplates {
 
   // --- MORE CONTROLS MODAL/PANEL ---
   buildMoreControlsView(player) {
-    const loop = player.loop || player.queue?.repeatMode || 'off';
+    const loop = this.normalizeLoop(player.loop || player.queue?.repeatMode);
     const autoplay = Boolean(player.autoplay || player.isAutoplayEnabled?.());
 
     const container = new ContainerBuilder(null)
@@ -168,8 +190,8 @@ class UITemplates {
             .setStyle(BUTTON_STYLES.SECONDARY),
           new ButtonBuilder()
             .setCustomId('player:247:toggle')
-            .setLabel('24/7 Mode')
-            .setStyle(BUTTON_STYLES.SECONDARY)
+            .setLabel(`24/7: ${player.is247 ? 'ON' : 'OFF'}`)
+            .setStyle(player.is247 ? BUTTON_STYLES.PRIMARY : BUTTON_STYLES.SECONDARY)
         ),
         new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -278,7 +300,7 @@ class UITemplates {
         ),
         new ActionRowBuilder().addComponents(
           new ButtonBuilder()
-            .setCustomId('player:shuffle')
+            .setCustomId('queue:shuffle')
             .setLabel('Shuffle')
             .setStyle(BUTTON_STYLES.SECONDARY),
           new ButtonBuilder()
@@ -584,46 +606,6 @@ class UITemplates {
     return createV2Payload(container);
   }
 
-  // --- MENTION VIEW ---
-  buildMentionView(client, guild, prefix) {
-    const botName = client.user?.username || 'Kira Music';
-    const ping = client.ws.ping || 0;
-
-    const content = [
-      `### ${botName}`,
-      `Hello! I am **${botName}**, a high-fidelity music streaming bot for Discord.`,
-      '',
-      `• **Server Prefix:** \`${prefix}\``,
-      `• **Slash Commands:** Available globally (\`/play\`, \`/help\`, \`/queue\`)`,
-      `• **Gateway Latency:** \`${ping}ms\``,
-      '',
-      `Type \`/help\` or \`${prefix}help\` to browse all available commands.`,
-      `Type \`/play <song>\` or \`${prefix}play <song>\` to start listening.`
-    ].join('\n');
-
-    const container = new ContainerBuilder(null)
-      .addComponents(
-        new TextDisplayBuilder(content),
-        new SeparatorBuilder(true, 1),
-        new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('help:cat:home')
-            .setLabel('Help Menu')
-            .setStyle(BUTTON_STYLES.PRIMARY),
-          new ButtonBuilder()
-            .setStyle(BUTTON_STYLES.LINK)
-            .setLabel('Invite Bot')
-            .setURL(`https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot%20applications.commands`),
-          new ButtonBuilder()
-            .setStyle(BUTTON_STYLES.LINK)
-            .setLabel('Support Server')
-            .setURL('https://discord.gg/example')
-        )
-      );
-
-    return createV2Payload(container);
-  }
-
   // --- HELP COMMAND ---
   buildHelpMenu(category = 'home', isDev = false) {
     const isHome = !category || category === 'home' || category === 'overview';
@@ -823,7 +805,11 @@ class UITemplates {
       .addComponents(
         new TextDisplayBuilder(
           `### ${userObj?.username || 'User'}'s Music Profile\nTotal Tracks: **${userData.totalPlayed || 0}** • Listening Time: **${this.formatDuration(userData.totalDurationMs || 0)}**`
-        )
+        ),
+        new SeparatorBuilder(true, 1),
+        // Components V2 requires every attachment to be referenced by a
+        // component — without this the profile card image never renders.
+        new FileBuilder('attachment://profile.png')
       );
 
     return createV2Payload(container, {
@@ -907,7 +893,7 @@ class UITemplates {
         .setLabel('Support')
         .setUrl(supportUrl),
       new ButtonBuilder()
-        .setCustomId('help:category:general')
+        .setCustomId('help:cat:home')
         .setLabel('Commands')
         .setStyle(BUTTON_STYLES.SECONDARY)
     );

@@ -9,6 +9,8 @@ class PremiumButtonHandler {
       await interaction.reply(
         uiTemplates.buildPremiumDashboard(tier, premiumManager.getEntitlement(interaction.user.id), premiumManager.getEntitlement(guildId))
       );
+    } else {
+      await interaction.deferUpdate();
     }
   }
 }

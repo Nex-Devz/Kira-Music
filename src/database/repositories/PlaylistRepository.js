@@ -6,6 +6,7 @@ class PlaylistRepository {
     this.db = dbManager.getDb();
 
     this.getPlaylistStmt = this.db.prepare('SELECT * FROM playlists WHERE id = ?');
+    this.getOwnedPlaylistStmt = this.db.prepare('SELECT id FROM playlists WHERE id = ? AND user_id = ?');
     this.getPlaylistByNameStmt = this.db.prepare('SELECT * FROM playlists WHERE user_id = ? AND LOWER(name) = LOWER(?)');
     this.getUserPlaylistsStmt = this.db.prepare('SELECT p.*, COUNT(pt.id) as track_count FROM playlists p LEFT JOIN playlist_tracks pt ON p.id = pt.playlist_id WHERE p.user_id = ? GROUP BY p.id ORDER BY p.updated_at DESC');
     this.getGuildPublicPlaylistsStmt = this.db.prepare('SELECT p.*, COUNT(pt.id) as track_count FROM playlists p LEFT JOIN playlist_tracks pt ON p.id = pt.playlist_id WHERE p.guild_id = ? AND p.is_public = 1 GROUP BY p.id ORDER BY p.updated_at DESC');
@@ -87,6 +88,10 @@ class PlaylistRepository {
 
   delete(id, userId) {
     const tx = this.db.transaction(() => {
+      // Ownership must be verified BEFORE any destructive work — otherwise a
+      // forged/shared delete button could wipe someone else's tracks even
+      // though the final DELETE matches no rows.
+      if (!this.getOwnedPlaylistStmt.get(id, userId)) return false;
       this.clearTracksStmt.run(id);
       return this.deletePlaylistStmt.run(id, userId).changes > 0;
     });
