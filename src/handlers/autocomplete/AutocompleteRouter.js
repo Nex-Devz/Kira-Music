@@ -87,7 +87,24 @@ class AutocompleteRouter {
       }
     }
 
-    await interaction.respond(choices.slice(0, 25));
+    // Never leave an autocomplete hanging — a failed respond shows as "This
+    // interaction failed". Trim values to Discord's limits and fall back to [] .
+    const safe = choices
+      .slice(0, 25)
+      .map(c => ({
+        name: String(c.name).substring(0, 100),
+        value: typeof c.value === 'number' ? c.value : String(c.value).substring(0, 100)
+      }));
+
+    try {
+      await interaction.respond(safe);
+    } catch (e) {
+      try {
+        await interaction.respond([]);
+      } catch (e2) {
+        // Interaction already acknowledged or expired — nothing else to do.
+      }
+    }
   }
 }
 

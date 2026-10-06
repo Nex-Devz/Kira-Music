@@ -68,7 +68,10 @@ class MiddlewarePipeline {
     // 7. Player Required Checks
     if (command.playerRequired) {
       const player = musicManager.getPlayer(guildId);
-      const isQueueEmpty = typeof player?.queue?.isEmpty === 'function' ? player.queue.isEmpty() : Boolean(player?.queue?.isEmpty ?? (player?.queue?.tracks?.length === 0));
+      // queue.isEmpty is a native boolean getter in YuKumo
+      const isQueueEmpty = player
+        ? Boolean(player.queue?.isEmpty ?? (player.queue?.tracks?.length === 0))
+        : true;
       if (!player || (!player.currentTrack && isQueueEmpty)) {
         return { allowed: false, reason: 'There is no music currently playing in this server.' };
       }

@@ -143,9 +143,15 @@ module.exports = {
           return context.replyError(`Invalid position. Range must be between 1 and ${upcomingCount}.`);
         }
         const targetJump = isCurrentInTracks ? jumpPos : (jumpPos - 1);
-        player.queue.skipTo(targetJump);
-        await musicManager.skip(context.guildId);
-        return context.replySuccess(`Jumped to track at position #${jumpPos}.`);
+        // player.skipTo() drives the node itself — mutating the queue and then
+        // calling skip() would advance past the track we just jumped to.
+        const jumped = await player.skipTo(targetJump);
+        if (!jumped) {
+          return context.replyError(`Could not jump to position #${jumpPos}.`);
+        }
+        return context.replySuccess(
+          `Jumped to **${jumped.title || jumped.info?.title || 'track'}** at position #${jumpPos}.`
+        );
       }
     }
   }

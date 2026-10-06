@@ -10,6 +10,7 @@ const lyricsButtonHandler = require('./buttons/LyricsButtonHandler');
 const playlistButtonHandler = require('./buttons/PlaylistButtonHandler');
 const setupButtonHandler = require('./buttons/SetupButtonHandler');
 const premiumButtonHandler = require('./buttons/PremiumButtonHandler');
+const settingsButtonHandler = require('./buttons/SettingsButtonHandler');
 
 const filterSelectHandler = require('./selects/FilterSelectHandler');
 const searchSelectHandler = require('./selects/SearchSelectHandler');
@@ -34,6 +35,12 @@ class InteractionRouter {
         await this.handleStringSelect(interaction);
       } else if (interaction.isModalSubmit()) {
         await modalRouter.handle(interaction);
+      } else {
+        // Channel/role/user/mentionable select menus are not used by any view —
+        // acknowledge them so the interaction never hangs as "failed".
+        if (interaction.isRepliable()) {
+          await interaction.reply(uiTemplates.buildErrorMessage('This menu is not supported.'));
+        }
       }
     } catch (err) {
       if (!interaction.isAutocomplete()) {
@@ -80,6 +87,10 @@ class InteractionRouter {
 
       case 'premium':
         await premiumButtonHandler.handle(interaction, action);
+        break;
+
+      case 'settings':
+        await settingsButtonHandler.handle(interaction, action, param1);
         break;
 
       case 'search':

@@ -1,9 +1,11 @@
 const musicManager = require('../../managers/MusicManager');
 const userRepo = require('../../database/repositories/UserRepository');
 const guildRepo = require('../../database/repositories/GuildRepository');
+const persistentRepo = require('../../database/repositories/PersistentPlayerRepository');
 const premiumManager = require('../../managers/PremiumManager');
 const permissionManager = require('../../managers/PermissionManager');
 const uiTemplates = require('../../ui/templates');
+const lyricsUtil = require('../../utils/lyrics');
 
 class PlayerButtonHandler {
   async handle(interaction, action, param1, param2, player) {
@@ -16,22 +18,22 @@ class PlayerButtonHandler {
     switch (action) {
       case 'pause':
         await musicManager.pause(guildId);
-        await interaction.deferUpdate();
+        await interaction.update(await uiTemplates.buildPlayerView(player));
         break;
 
       case 'resume':
         await musicManager.resume(guildId);
-        await interaction.deferUpdate();
+        await interaction.update(await uiTemplates.buildPlayerView(player));
         break;
 
       case 'skip':
         await musicManager.skip(guildId);
-        await interaction.deferUpdate();
+        await interaction.update(await uiTemplates.buildPlayerView(player));
         break;
 
       case 'previous':
         await musicManager.previous(guildId);
-        await interaction.deferUpdate();
+        await interaction.update(await uiTemplates.buildPlayerView(player));
         break;
 
       case 'stop':
@@ -48,10 +50,11 @@ class PlayerButtonHandler {
         if (!curTrack) {
           return interaction.reply(uiTemplates.buildErrorMessage('No track currently playing.'));
         }
-        const lyricsText = `Lyrics for ${curTrack.title || 'Unknown'}\n\n(Synced lyrics stream active.)`;
-        await interaction.reply(
-          uiTemplates.buildLyricsView(curTrack.title || 'Current Song', curTrack.author || 'Artist', lyricsText, 1)
-        );
+        const title = curTrack.title || curTrack.info?.title || 'Current Song';
+        const author = curTrack.author || curTrack.info?.author || '';
+        const text = await lyricsUtil.resolveLyrics(player, lyricsUtil.trackQuery(curTrack), true);
+        const body = text || `No lyrics are available for **${title}** right now.`;
+        await interaction.reply(uiTemplates.buildLyricsView(title, author, body, 1));
         break;
       }
 
@@ -83,7 +86,7 @@ class PlayerButtonHandler {
 
       case 'shuffle':
         player.queue.shuffle();
-        await interaction.reply(uiTemplates.buildSuccessMessage('Shuffled the queue.'));
+        await interaction.update(uiTemplates.buildMoreControlsView(player));
         break;
 
       case 'loop': {
@@ -123,10 +126,23 @@ class PlayerButtonHandler {
           );
         }
         player.is247 = !player.is247;
+        // Mirror /247: keep the engine in the voice channel and persist the
+        // record so the connection is restored after a restart.
+        if (typeof player.setStayInVc === 'function') {
+          player.setStayInVc(player.is247);
+        }
         guildRepo.update(guildId, { mode_247: player.is247 ? 1 : 0 });
-        await interaction.reply(
-          uiTemplates.buildSuccessMessage(`24/7 Mode is now **${player.is247 ? 'Enabled' : 'Disabled'}**.`)
-        );
+        if (player.is247) {
+          persistentRepo.save(guildId, {
+            voiceChannelId: player.voiceChannelId,
+            textChannelId: player.textChannelId || interaction.channelId,
+            is247: true,
+            volume: player.volume || 80
+          });
+        } else {
+          persistentRepo.delete(guildId);
+        }
+        await interaction.update(uiTemplates.buildMoreControlsView(player));
         break;
       }
 

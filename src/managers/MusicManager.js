@@ -43,7 +43,17 @@ class MusicManager {
       secure: Boolean(n.secure)
     }));
 
-    const defaultSearch = config.lavalink.defaultSearchEngine === 'youtube' ? 'ytsearch' : 'spsearch';
+    // Honor SEARCH_ENGINE config: accept both raw prefixes (ytsearch, spsearch, ...) and source aliases (youtube, spotify, ...)
+    const engine = String(config.lavalink.defaultSearchEngine || 'ytsearch').toLowerCase().trim();
+    const engineAliases = {
+      youtube: 'ytsearch', yt: 'ytsearch',
+      youtube_music: 'ytmsearch', youtubemusic: 'ytmsearch', ytmsearch: 'ytmsearch',
+      spotify: 'spsearch', spsearch: 'spsearch',
+      soundcloud: 'scsearch', scsearch: 'scsearch',
+      deezer: 'dzsearch', dzsearch: 'dzsearch',
+      ytsearch: 'ytsearch'
+    };
+    const defaultSearch = engineAliases[engine] || 'ytsearch';
 
     const sendGatewayPayload = (guildId, payload) => {
       const guild = client.guilds.cache.get(guildId);
@@ -174,20 +184,9 @@ class MusicManager {
       }
     });
 
-    this.kumo.on('playerEmpty', async (guildId) => {
-      const player = this.getPlayer(guildId);
-      if (!player) return;
-
-      if (player.autoplay) {
-        try {
-          await this.triggerAutoplay(player);
-        } catch (err) {
-          console.error('[MusicManager] Autoplay error on playerEmpty:', err);
-        }
-      } else {
-        await this.updatePlayerMessage(player, true);
-      }
-    });
+    // NOTE: YuKumo re-emits every "queueEnd" as "playerEmpty" as well, so a
+    // handler here would run twice per empty queue (double autoplay adds).
+    // "queueEnd" is the single source of truth for the empty-queue path.
 
     // Player: Track Exception Event
     this.kumo.on('trackException', async (guildId, track, exception) => {
@@ -342,19 +341,7 @@ class MusicManager {
         player.queue.dequeue = () => player.queue.next();
       }
 
-      if (typeof player.queue.isEmpty !== 'function') {
-        const q = player.queue;
-        const checkEmpty = () => q.tracks.length === 0 && !q.currentTrack;
-        Object.defineProperty(q, 'isEmpty', {
-          get() {
-            const fn = () => checkEmpty();
-            fn[Symbol.toPrimitive] = () => checkEmpty();
-            fn.valueOf = () => checkEmpty();
-            return fn;
-          },
-          configurable: true
-        });
-      }
+      // queue.isEmpty is a native boolean getter in YuKumo — never shadow it.
     }
 
     return player;
@@ -628,16 +615,14 @@ class MusicManager {
     const player = this.getPlayer(guildId);
     if (!player) throw new Error('No active player found.');
 
-    const prevTrack = player.getPrevious(true);
+    // queue.previous() reinserts the history track at the cursor so queue
+    // state and currentTrack stay consistent; play() then starts it.
+    const prevTrack = player.queue.previous();
     if (!prevTrack) {
       throw new Error('No previous track found in history.');
     }
 
-    if (player.currentTrack) {
-      player.queue.tracks.unshift(player.currentTrack);
-    }
-
-    await player.playTrack(prevTrack);
+    await player.play(prevTrack);
     return true;
   }
 
@@ -700,9 +685,11 @@ class MusicManager {
 
     const yMode = modeMap[cleanMode] || LoopMode.NONE;
     player.setLoop(yMode);
-    player.loop = cleanMode;
+    // Store our own vocabulary ('off') so UI and /loop toggles never see
+    // YuKumo's 'none'.
+    player.loop = cleanMode === 'none' ? 'off' : cleanMode;
 
-    return cleanMode;
+    return player.loop;
   }
 
   /**
@@ -787,6 +774,9 @@ class MusicManager {
    * Autoplay recommendation engine
    */
   async triggerAutoplay(player) {
+    // Another handler may already have queued something (racing track events)
+    if (player.queue && player.queue.size > 0) return;
+
     const lastTrack = player.currentTrack || player.getPrevious();
     if (!lastTrack) return;
 

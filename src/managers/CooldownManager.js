@@ -22,12 +22,17 @@ class CooldownManager {
   setCooldown(commandName, userId, guildId = null, cooldownSeconds = 3) {
     if (!cooldownSeconds || cooldownSeconds <= 0) return;
     const key = this.getKey(commandName, userId, guildId);
-    this.cooldowns.set(key, Date.now() + cooldownSeconds * 1000);
+    const expiresAt = Date.now() + cooldownSeconds * 1000;
+    this.cooldowns.set(key, expiresAt);
 
-    // Auto cleanup
-    setTimeout(() => {
-      this.cooldowns.delete(key);
+    // Only delete if this exact expiration is still the active one — a stale
+    // timer from a previous cooldown must not wipe a newer refresh early.
+    const timer = setTimeout(() => {
+      if (this.cooldowns.get(key) === expiresAt) {
+        this.cooldowns.delete(key);
+      }
     }, cooldownSeconds * 1000 + 500);
+    timer.unref?.();
   }
 }
 

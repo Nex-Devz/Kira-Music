@@ -17,10 +17,9 @@ module.exports = {
     .addIntegerOption(option =>
       option
         .setName('level')
-        .setDescription('Volume level (0-150)')
+        .setDescription('Volume level (0-150) — omit to show current volume')
         .setMinValue(0)
         .setMaxValue(150)
-        .setRequired(true)
     ),
 
   async execute(context) {
